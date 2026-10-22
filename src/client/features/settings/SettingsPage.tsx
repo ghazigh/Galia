@@ -343,7 +343,7 @@ function Household() {
       {members.map((member) => (
         <Row
           key={member.id}
-          icon={<Avatar member={member} size={32} />}
+          icon={<Avatar member={member} size={32} decorative />}
           title={member.id === me.id ? `${member.name} (you)` : member.name}
           detail={member.email}
         >

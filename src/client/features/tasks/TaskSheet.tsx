@@ -311,7 +311,7 @@ export function TaskSheet() {
             <MetaRow icon={<UserRound className="size-4" />} label="Who">
               {assignee ? (
                 <span className="inline-flex items-center gap-2">
-                  <Avatar member={assignee} size={22} />
+                  <Avatar member={assignee} size={22} decorative />
                   {assignee.id === bootstrap.me.id ? 'You' : assignee.name}
                   {assigner && assigner.id !== assignee.id && (
                     <span className="text-ink-3">· from {assigner.id === bootstrap.me.id ? 'you' : assigner.name}</span>

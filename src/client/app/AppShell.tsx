@@ -120,7 +120,7 @@ function Sidebar() {
         ))}
       </nav>
       <div className="mt-auto flex items-center gap-3 rounded-2xl px-2 py-2">
-        <Avatar member={me} size={32} />
+        <Avatar member={me} size={32} decorative />
         <div className="min-w-0 leading-tight">
           <p className="truncate text-[14px] font-semibold text-ink">{me.name}</p>
           <p className="truncate text-[12px] text-ink-3">{me.email}</p>
