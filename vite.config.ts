@@ -6,6 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { APP_NAME, APP_SHORT_NAME, APP_DESCRIPTION } from './src/shared/brand';
 
 const API_TARGET = process.env.API_TARGET ?? 'http://127.0.0.1:8787';
+// Keep the browser's Host header so the API's same-origin (CSRF) check sees matching hosts.
+const apiProxy = { '/api': { target: API_TARGET, changeOrigin: false, xfwd: true } };
 
 export default defineConfig({
   plugins: [
@@ -53,10 +55,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: { '/api': API_TARGET },
+    proxy: apiProxy,
   },
   preview: {
-    proxy: { '/api': API_TARGET },
+    proxy: apiProxy,
   },
   build: {
     outDir: 'dist/client',

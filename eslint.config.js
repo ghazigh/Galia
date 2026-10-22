@@ -25,7 +25,8 @@ export default tseslint.config(
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // Providers intentionally live next to their hooks; this rule only affects HMR granularity.
+      'react-refresh/only-export-components': 'off',
     },
   },
   {
