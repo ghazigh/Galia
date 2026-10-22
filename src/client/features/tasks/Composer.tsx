@@ -257,7 +257,7 @@ export function Composer() {
           )}
         </div>
 
-        <Field label="Who's doing it">
+        <Field label="Who's doing it" group>
           <div className="flex flex-wrap gap-2">
             {assigneeOptions.map((option) => {
               const member = option.id ? (option.id === me.id ? me : partner) : null;
@@ -266,7 +266,7 @@ export function Composer() {
                   key={option.label}
                   selected={form.assigneeId === option.id}
                   onClick={() => set('assigneeId', option.id)}
-                  icon={member ? <Avatar member={member} size={18} /> : undefined}
+                  icon={member ? <Avatar member={member} size={18} decorative /> : undefined}
                 >
                   {option.label}
                 </Chip>
@@ -275,7 +275,7 @@ export function Composer() {
           </div>
         </Field>
 
-        <Field label="When" hint={form.dueDate ? formatDayDate(form.dueDate, today) : 'No due date'}>
+        <Field group label="When" hint={form.dueDate ? formatDayDate(form.dueDate, today) : 'No due date'}>
           <div className="flex flex-wrap gap-2">
             {dates.map((d) => (
               <Chip key={d.label} selected={form.dueDate === d.value} onClick={() => set('dueDate', d.value)}>
@@ -294,7 +294,7 @@ export function Composer() {
           )}
         </Field>
 
-        <Field label="Repeats" hint={form.recurrence ? `${describeRecurrence(form.recurrence)} — the clock restarts each time it's done` : undefined}>
+        <Field group label="Repeats" hint={form.recurrence ? `${describeRecurrence(form.recurrence)} — the clock restarts each time it's done` : undefined}>
           <div className="flex flex-wrap gap-2">
             {REPEATS.map((r) => (
               <Chip key={r.label} selected={sameRecurrence(form.recurrence, r.value)} onClick={() => set('recurrence', r.value)}>
@@ -307,7 +307,7 @@ export function Composer() {
           </div>
         </Field>
 
-        <Field label="Where in the house" hint={form.zoneId ? zoneLabel(form.zoneId) : 'Tap a room — or leave it off'}>
+        <Field group label="Where in the house" hint={form.zoneId ? zoneLabel(form.zoneId) : 'Tap a room — or leave it off'}>
           <div className="overflow-hidden rounded-2xl border border-line bg-canvas">
             <div className="h-48">
               <HouseView
@@ -358,7 +358,7 @@ export function Composer() {
           />
         </div>
 
-        <Field label="Priority">
+        <Field label="Priority" group>
           <Segmented
             value={form.priority}
             onChange={(priority) => set('priority', priority)}
@@ -372,7 +372,7 @@ export function Composer() {
         </Field>
 
         {form.kind === 'maintenance' && (
-          <Field label="Risk if forgotten">
+          <Field label="Risk if forgotten" group>
             <div className="flex flex-wrap gap-2">
               {(['fire', 'water', 'safety', 'air', 'efficiency'] as Risk[]).map((risk) => {
                 const on = form.risks.includes(risk);

@@ -177,13 +177,26 @@ export function Segmented<T extends string>({
   );
 }
 
-export function Avatar({ member, size = 28, ring }: { member: Pick<Member, 'name' | 'color'>; size?: number; ring?: boolean }) {
+export function Avatar({
+  member,
+  size = 28,
+  ring,
+  decorative,
+}: {
+  member: Pick<Member, 'name' | 'color'>;
+  size?: number;
+  ring?: boolean;
+  /** Hide from assistive tech when the name is already shown next to it. */
+  decorative?: boolean;
+}) {
   return (
     <span
       className={cx('inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white', ring && 'ring-2 ring-surface')}
       style={{ width: size, height: size, background: member.color, fontSize: Math.round(size * 0.4) }}
-      title={member.name}
-      aria-label={member.name}
+      title={decorative ? undefined : member.name}
+      aria-label={decorative ? undefined : member.name}
+      aria-hidden={decorative || undefined}
+      role={decorative ? undefined : 'img'}
     >
       {initials(member.name)}
     </span>
@@ -227,23 +240,37 @@ export function Field({
   hint,
   error,
   children,
-  htmlFor,
+  group,
 }: {
   label: string;
   hint?: ReactNode;
   error?: string | null;
   children: ReactNode;
-  htmlFor?: string;
+  /** A set of controls (chips, segmented) rather than one input: labelled group, not <label>. */
+  group?: boolean;
 }) {
+  const id = useId();
+  const footer = error ? (
+    <span className="text-[12.5px] font-medium text-overdue">{error}</span>
+  ) : hint ? (
+    <span className="text-[12.5px] text-ink-3">{hint}</span>
+  ) : null;
+  if (group) {
+    return (
+      <div role="group" aria-labelledby={id} className="flex flex-col gap-1.5">
+        <span id={id} className="text-[13px] font-semibold text-ink-2">
+          {label}
+        </span>
+        {children}
+        {footer}
+      </div>
+    );
+  }
   return (
-    <label className="flex flex-col gap-1.5" htmlFor={htmlFor}>
+    <label className="flex flex-col gap-1.5">
       <span className="text-[13px] font-semibold text-ink-2">{label}</span>
       {children}
-      {error ? (
-        <span className="text-[12.5px] font-medium text-overdue">{error}</span>
-      ) : hint ? (
-        <span className="text-[12.5px] text-ink-3">{hint}</span>
-      ) : null}
+      {footer}
     </label>
   );
 }

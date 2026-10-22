@@ -202,10 +202,10 @@ export function TasksPage() {
             <Chip selected={who === 'all'} onClick={() => setWho('all')}>
               All
             </Chip>
-            <Chip selected={who === 'me'} onClick={() => setWho('me')} icon={<Avatar member={me} size={18} />}>
+            <Chip selected={who === 'me'} onClick={() => setWho('me')} icon={<Avatar member={me} size={18} decorative />}>
               Me
             </Chip>
-            <Chip selected={who === 'partner'} onClick={() => setWho('partner')} icon={<Avatar member={partner} size={18} />}>
+            <Chip selected={who === 'partner'} onClick={() => setWho('partner')} icon={<Avatar member={partner} size={18} decorative />}>
               {partner.name}
             </Chip>
             <Chip selected={who === 'none'} onClick={() => setWho('none')}>
