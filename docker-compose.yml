@@ -1,0 +1,16 @@
+# Run Household OS on any machine with Docker (a home server, or a small VM such as a GCE
+# e2-micro). The database lives in a named volume; reminders run in-process every 5 minutes.
+services:
+  household:
+    build: .
+    ports:
+      - '8080:8080'
+    env_file: .env
+    environment:
+      REMINDER_INTERVAL_MINUTES: '5'
+    volumes:
+      - household-data:/data
+    restart: unless-stopped
+
+volumes:
+  household-data:

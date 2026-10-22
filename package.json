@@ -5,16 +5,16 @@
   "type": "module",
   "description": "Household OS — home maintenance and shared to-dos for two, built around an interactive isometric house. Installable PWA.",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.9"
   },
   "scripts": {
     "dev": "concurrently -k -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
-    "dev:server": "tsx watch --tsconfig tsconfig.node.json --clear-screen=false src/server/index.ts",
+    "dev:server": "tsx watch --env-file-if-exists=.env --tsconfig tsconfig.node.json --clear-screen=false src/server/index.ts",
     "dev:web": "vite",
     "build": "npm run build:web && npm run build:server",
     "build:web": "vite build",
     "build:server": "node scripts/build-server.mjs",
-    "start": "node --enable-source-maps dist/server/index.js",
+    "start": "node --env-file-if-exists=.env --enable-source-maps dist/server/index.js",
     "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json && tsc -p tsconfig.sw.json",
     "lint": "eslint .",
     "format": "prettier --write .",

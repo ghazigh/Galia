@@ -65,5 +65,11 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
     target: 'es2022',
+    rollupOptions: {
+      output: {
+        // Libraries change less often than the app, so their chunk stays cached across releases.
+        manualChunks: (id) => (id.includes('/node_modules/') ? 'vendor' : undefined),
+      },
+    },
   },
 });
