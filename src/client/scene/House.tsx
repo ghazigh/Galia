@@ -23,8 +23,10 @@ import {
   levelBase,
   levelOpen,
   OPENINGS,
+  fromPlan,
+  partitions,
+  RECTS,
   ROOF,
-  ROOMS,
   SLAB,
   STAIR,
   T,
@@ -35,11 +37,12 @@ import {
   YARD,
   type Layer,
   type Opening,
+  type Rect3D,
   type SceneView,
   type WallSide,
 } from './layout';
 import { ballGeometry, partMaterial, roundedBox, shellMaterials, unitBox, unitCylinder, wallFaces } from './materials';
-import { roomParts, SCONCES, siteParts, type Part } from './parts';
+import { rectParts, SCONCES, siteParts, type Part, type SitePart } from './parts';
 
 export type LayerOffsets = Record<Layer, number>;
 
@@ -78,40 +81,41 @@ const damp = (current: number, target: number, lambda: number, dt: number) => Ma
 
 // ── Parts ─────────────────────────────────────────────────────────────────────────────────────
 
+/** A part in plan coordinates (x back→front, y right→left, z up), placed in the scene. */
 const PartMesh = memo(function PartMesh({ part, highlighted }: { part: Part; highlighted: boolean }) {
   const material = highlighted ? shellMaterials().highlight : partMaterial(part.m);
   if (part.kind === 'box') {
     const [x, y, z] = part.p;
-    const [w, h, d] = part.s;
-    const big = w * h * d > 0.04;
+    const [sx, sy, sz] = part.s;
+    const [cx, cz] = fromPlan(x + sx / 2, y + sy / 2);
+    // Plan x runs along scene z and plan y along scene x.
+    const big = sx * sy * sz > 0.04;
     if (part.r) {
-      return (
-        <mesh geometry={roundedBox(w, h, d, part.r)} material={material} position={[x, y + h / 2, z]} rotation-y={part.ry ?? 0} castShadow={big} receiveShadow />
-      );
+      return <mesh geometry={roundedBox(sy, sz, sx, part.r)} material={material} position={[cx, z + sz / 2, cz]} castShadow={big} receiveShadow />;
     }
-    return <mesh geometry={unitBox} material={material} position={[x, y + h / 2, z]} scale={[w, h, d]} rotation-y={part.ry ?? 0} castShadow={big} receiveShadow />;
+    return <mesh geometry={unitBox} material={material} position={[cx, z + sz / 2, cz]} scale={[sy, sz, sx]} castShadow={big} receiveShadow />;
   }
   if (part.kind === 'cyl') {
     const [x, y, z] = part.p;
+    const [cx, cz] = fromPlan(x, y);
     const big = part.r * part.r * part.h > 0.015;
     if (part.axis) {
       return (
         <mesh
           geometry={unitCylinder(part.seg)}
           material={material}
-          position={[x, y, z]}
-          rotation={part.axis === 'x' ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0]}
+          position={[cx, z, cz]}
+          rotation={part.axis === 'x' ? [Math.PI / 2, 0, 0] : [0, 0, Math.PI / 2]}
           scale={[part.r, part.h, part.r]}
           castShadow={big}
         />
       );
     }
-    return <mesh geometry={unitCylinder(part.seg)} material={material} position={[x, y + part.h / 2, z]} scale={[part.r, part.h, part.r]} castShadow={big} receiveShadow />;
+    return <mesh geometry={unitCylinder(part.seg)} material={material} position={[cx, z + part.h / 2, cz]} scale={[part.r, part.h, part.r]} castShadow={big} receiveShadow />;
   }
   const [x, y, z] = part.p;
-  return (
-    <mesh geometry={ballGeometry(Boolean(part.facet))} material={material} position={[x, y, z]} scale={[part.r, part.r * (part.sy ?? 1), part.r]} castShadow />
-  );
+  const [cx, cz] = fromPlan(x, y);
+  return <mesh geometry={ballGeometry(Boolean(part.facet))} material={material} position={[cx, z, cz]} scale={[part.r, part.r * (part.sy ?? 1), part.r]} castShadow />;
 });
 
 function Parts({ parts, highlight }: { parts: readonly Part[]; highlight: FixtureId | null }) {
@@ -123,6 +127,35 @@ function Parts({ parts, highlight }: { parts: readonly Part[]; highlight: Fixtur
     </>
   );
 }
+
+/** A part outdoors, already in scene coordinates. */
+const SiteMesh = memo(function SiteMesh({ part, highlighted }: { part: SitePart; highlighted: boolean }) {
+  const material = highlighted ? shellMaterials().highlight : partMaterial(part.m);
+  if (part.kind === 'box') {
+    const [x, y, z] = part.at;
+    const [w, h, d] = part.s;
+    if (part.r) return <mesh geometry={roundedBox(w, h, d, part.r)} material={material} position={[x, y + h / 2, z]} castShadow receiveShadow />;
+    return <mesh geometry={unitBox} material={material} position={[x, y + h / 2, z]} scale={[w, h, d]} castShadow={w * h * d > 0.04} receiveShadow />;
+  }
+  if (part.kind === 'cyl') {
+    const [x, y, z] = part.at;
+    if (part.axis) {
+      return (
+        <mesh
+          geometry={unitCylinder(part.seg)}
+          material={material}
+          position={[x, y, z]}
+          rotation={part.axis === 'x' ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0]}
+          scale={[part.r, part.h, part.r]}
+          castShadow
+        />
+      );
+    }
+    return <mesh geometry={unitCylinder(part.seg)} material={material} position={[x, y + part.h / 2, z]} scale={[part.r, part.h, part.r]} castShadow receiveShadow />;
+  }
+  const [x, y, z] = part.p;
+  return <mesh geometry={ballGeometry(Boolean(part.facet))} material={material} position={[x, y, z]} scale={[part.r, part.r * (part.sy ?? 1), part.r]} castShadow />;
+});
 
 // ── Walls that lower themselves on the side facing the camera ────────────────────────────────
 
@@ -259,23 +292,35 @@ function healthKey(health: ZoneHealth | undefined): keyof typeof STATUS_COLORS |
   return health && health !== 'empty' ? health : null;
 }
 
-function RoomStatus({ x0, x1, health, selected }: { x0: number; x1: number; health: ZoneHealth | undefined; selected: boolean }) {
+/** Clamps a plan part to the inside faces of the exterior walls. */
+function inner(rect: Rect3D) {
+  return {
+    x0: Math.max(rect.x0, -W / 2 + T),
+    x1: Math.min(rect.x1, W / 2 - T),
+    z0: Math.max(rect.z0, -D / 2 + T),
+    z1: Math.min(rect.z1, D / 2 - T),
+  };
+}
+
+function RoomStatus({ rect, health, selected }: { rect: Rect3D; health: ZoneHealth | undefined; selected: boolean }) {
   const key = selected ? 'accent' : healthKey(health);
   if (!key) return null;
-  const w = x1 - x0 - 0.12;
-  const d = D - 2 * T - 0.12;
-  const cx = (x0 + x1) / 2;
+  const b = inner(rect);
+  const w = b.x1 - b.x0 - 0.1;
+  const d = b.z1 - b.z0 - 0.1;
+  const cx = (b.x0 + b.x1) / 2;
+  const cz = (b.z0 + b.z1) / 2;
   const edge = selected ? 0.07 : 0.035;
   const edgeMaterial = statusEdge[key];
   return (
     <group>
-      <mesh geometry={unitBox} material={statusFill[key]} position={[cx, 0.03, 0]} scale={[w, 0.004, d]} renderOrder={2} />
+      <mesh geometry={unitBox} material={statusFill[key]} position={[cx, 0.03, cz]} scale={[w, 0.004, d]} renderOrder={2} />
       {key !== 'ok' && (
         <>
-          <mesh geometry={unitBox} material={edgeMaterial} position={[cx, 0.035, d / 2]} scale={[w, 0.01, edge]} />
-          <mesh geometry={unitBox} material={edgeMaterial} position={[cx, 0.035, -d / 2]} scale={[w, 0.01, edge]} />
-          <mesh geometry={unitBox} material={edgeMaterial} position={[cx - w / 2, 0.035, 0]} scale={[edge, 0.01, d]} />
-          <mesh geometry={unitBox} material={edgeMaterial} position={[cx + w / 2, 0.035, 0]} scale={[edge, 0.01, d]} />
+          <mesh geometry={unitBox} material={edgeMaterial} position={[cx, 0.035, cz + d / 2]} scale={[w, 0.01, edge]} />
+          <mesh geometry={unitBox} material={edgeMaterial} position={[cx, 0.035, cz - d / 2]} scale={[w, 0.01, edge]} />
+          <mesh geometry={unitBox} material={edgeMaterial} position={[cx - w / 2, 0.035, cz]} scale={[edge, 0.01, d]} />
+          <mesh geometry={unitBox} material={edgeMaterial} position={[cx + w / 2, 0.035, cz]} scale={[edge, 0.01, d]} />
         </>
       )}
     </group>
@@ -288,11 +333,12 @@ export function Storey({ level, view, summaries, selectedZone, highlight, offset
   const heights = useRef<Record<WallSide | 'partitions', number>>({ front: WALL, back: WALL, left: WALL, right: WALL, partitions: WALL });
   // Wall pieces start at full height; the first frame clips them to the view's heights.
   const initialized = useRef(false);
-  const rooms = ROOMS[level];
+  const rects = RECTS[level];
+  const walls = useMemo(() => partitions(level), [level]);
   const base = levelBase(level);
   const open = levelOpen(level, view);
   const m = shellMaterials();
-  const furniture = useMemo(() => rooms.map((room) => roomParts(room.zone)), [rooms]);
+  const furniture = useMemo(() => rects.map((rect) => rectParts(rect.id)), [rects]);
 
   useEffect(() => {
     const y = base + layerLift(level, view);
@@ -326,9 +372,9 @@ export function Storey({ level, view, summaries, selectedZone, highlight, offset
     }
     initialized.current = true;
     const partitionTarget = !open ? WALL : view.kind === 'exploded' ? 0.55 : 0.95;
-    const partitions = animate ? damp(heights.current.partitions, partitionTarget, 7, dt) : partitionTarget;
-    heights.current.partitions = partitions;
-    clip(registry.current.partitions, partitions);
+    const partitionHeight = animate ? damp(heights.current.partitions, partitionTarget, 7, dt) : partitionTarget;
+    heights.current.partitions = partitionHeight;
+    clip(registry.current.partitions, partitionHeight);
   });
 
   const registerPartition = (mesh: Mesh | null) => {
@@ -345,45 +391,47 @@ export function Storey({ level, view, summaries, selectedZone, highlight, offset
     <group ref={group} position={[0, base, 0]}>
       {/* Floor slab: its edge reads as a dark band between storeys on the facade. */}
       <mesh geometry={unitBox} material={m.trim} position={[0, -SLAB / 2, 0]} scale={[W, SLAB, D]} castShadow receiveShadow />
-      {rooms.map((room, index) => {
-        const x0 = room.x0 + (index === 0 ? T : T / 2);
-        const x1 = room.x1 - (index === rooms.length - 1 ? T : T / 2);
-        const selected = selectedZone === room.zone;
+      {rects.map((rect, index) => {
+        const b = inner(rect);
+        const zone = rect.zone;
         return (
-          <group key={room.zone}>
+          <group key={rect.id}>
             <mesh
               geometry={unitBox}
-              material={m.floors[room.floor]}
-              position={[(x0 + x1) / 2, 0.01, 0]}
-              scale={[x1 - x0, 0.02, D - 2 * T]}
+              material={m.floors[rect.floor]}
+              position={[(b.x0 + b.x1) / 2, 0.01, (b.z0 + b.z1) / 2]}
+              scale={[b.x1 - b.x0, 0.02, b.z1 - b.z0]}
               receiveShadow
             />
-            {open && <RoomStatus x0={x0} x1={x1} health={summaries[room.zone]?.health} selected={selected} />}
+            {open && zone && <RoomStatus rect={rect} health={summaries[zone]?.health} selected={selectedZone === zone} />}
             {open && <Parts parts={furniture[index]} highlight={highlight} />}
-            {index < rooms.length - 1 && (
+            {zone && (
+              // Invisible volume that makes the room tappable.
               <mesh
-                ref={registerPartition}
                 geometry={unitBox}
-                material={wallFaces('partition')}
-                position={[room.x1, WALL / 2, 0]}
-                scale={[T * 0.75, WALL, D - 2 * T]}
-                castShadow
-                receiveShadow
+                material={m.hidden}
+                position={[(rect.x0 + rect.x1) / 2, WALL / 2, (rect.z0 + rect.z1) / 2]}
+                scale={[rect.x1 - rect.x0, WALL, rect.z1 - rect.z0]}
+                onClick={tap(zone)}
+                onPointerOver={() => (document.body.style.cursor = 'pointer')}
+                onPointerOut={() => (document.body.style.cursor = '')}
               />
             )}
-            {/* Invisible volume that makes the whole room tappable. */}
-            <mesh
-              geometry={unitBox}
-              material={m.hidden}
-              position={[(room.x0 + room.x1) / 2, WALL / 2, 0]}
-              scale={[room.x1 - room.x0, WALL, D]}
-              onClick={tap(room.zone)}
-              onPointerOver={() => (document.body.style.cursor = 'pointer')}
-              onPointerOut={() => (document.body.style.cursor = '')}
-            />
           </group>
         );
       })}
+      {walls.map((wall, i) => (
+        <mesh
+          key={i}
+          ref={registerPartition}
+          geometry={unitBox}
+          material={wallFaces('partition')}
+          position={[wall.x, WALL / 2, wall.z]}
+          scale={[wall.w, WALL, wall.d]}
+          castShadow
+          receiveShadow
+        />
+      ))}
       <ExteriorWalls level={level} registry={registry} highlight={highlight} />
     </group>
   );
@@ -391,14 +439,19 @@ export function Storey({ level, view, summaries, selectedZone, highlight, offset
 
 // ── Roof ──────────────────────────────────────────────────────────────────────────────────────
 
-const SLOPE = Math.atan2(ROOF.rise, D / 2);
-const SLOPE_LENGTH = (D / 2 + ROOF.overhang) / Math.cos(SLOPE);
+// The ridge runs front to back. The roof is built in its own frame — ridge along local x
+// (LEN, the house's depth), slopes falling toward local ±z (SPAN, its width) — then turned a
+// quarter so the gables face the street and the yard.
+const LEN = D;
+const SPAN = W;
+const SLOPE = Math.atan2(ROOF.rise, SPAN / 2);
+const SLOPE_LENGTH = (SPAN / 2 + ROOF.overhang) / Math.cos(SLOPE);
 const ROOF_THICKNESS = 0.16;
 
 function gableGeometry() {
   const shape = new Shape();
-  shape.moveTo(-D / 2, 0);
-  shape.lineTo(D / 2, 0);
+  shape.moveTo(-SPAN / 2, 0);
+  shape.lineTo(SPAN / 2, 0);
   shape.lineTo(0, ROOF.rise);
   shape.closePath();
   const geometry = new ExtrudeGeometry(shape, { depth: T, bevelEnabled: false });
@@ -413,7 +466,7 @@ function Seams({ side }: { side: 1 | -1 }) {
     const mesh = ref.current;
     if (!mesh) return;
     const dummy = new Object3D();
-    const width = W + 2 * ROOF.overhang - 0.3;
+    const width = LEN + 2 * ROOF.overhang - 0.3;
     for (let i = 0; i < count; i += 1) {
       const x = -width / 2 + (width / (count - 1)) * i;
       dummy.position.set(x, 0, 0);
@@ -423,7 +476,7 @@ function Seams({ side }: { side: 1 | -1 }) {
     }
     mesh.instanceMatrix.needsUpdate = true;
   }, []);
-  const cz = (side * (D / 2 + ROOF.overhang)) / 2;
+  const cz = (side * (SPAN / 2 + ROOF.overhang)) / 2;
   const cy = (ROOF.rise - EAVE_DROP) / 2;
   const normal = [0, Math.cos(SLOPE), side * Math.sin(SLOPE)] as const;
   const lift = ROOF_THICKNESS / 2 + 0.02;
@@ -475,15 +528,16 @@ export function RoofLayer({
     onTap();
   };
   const gutter = highlight === 'gutters' ? m.highlight : m.frame;
-  const cz = (D / 2 + ROOF.overhang) / 2;
+  const cz = (SPAN / 2 + ROOF.overhang) / 2;
   const cy = (ROOF.rise - EAVE_DROP) / 2;
   const edge = selected ? statusEdge.accent : health && health !== 'empty' && health !== 'ok' ? statusEdge[health] : null;
 
   return (
     <group ref={group} position={[0, ROOF.base, 0]}>
       <mesh geometry={unitBox} material={m.cut} position={[0, -SLAB / 2, 0]} scale={[W, SLAB, D]} castShadow />
-      <mesh geometry={gable} material={m.exterior} position={[-W / 2, 0, 0]} castShadow receiveShadow />
-      <mesh geometry={gable} material={m.exterior} position={[W / 2 - T, 0, 0]} castShadow receiveShadow />
+      <group rotation-y={Math.PI / 2}>
+      <mesh geometry={gable} material={m.exterior} position={[-LEN / 2, 0, 0]} castShadow receiveShadow />
+      <mesh geometry={gable} material={m.exterior} position={[LEN / 2 - T, 0, 0]} castShadow receiveShadow />
       {([1, -1] as const).map((side) => (
         <group key={side}>
           <mesh
@@ -491,7 +545,7 @@ export function RoofLayer({
             material={m.roof}
             position={[0, cy, side * cz]}
             rotation={[side * SLOPE, 0, 0]}
-            scale={[W + 2 * ROOF.overhang, ROOF_THICKNESS, SLOPE_LENGTH]}
+            scale={[LEN + 2 * ROOF.overhang, ROOF_THICKNESS, SLOPE_LENGTH]}
             castShadow
             receiveShadow
             onClick={tap}
@@ -500,29 +554,30 @@ export function RoofLayer({
           <mesh
             geometry={unitBox}
             material={gutter}
-            position={[0, -EAVE_DROP - 0.06, side * (D / 2 + ROOF.overhang + 0.05)]}
-            scale={[W + 2 * ROOF.overhang, 0.13, 0.15]}
+            position={[0, -EAVE_DROP - 0.06, side * (SPAN / 2 + ROOF.overhang + 0.05)]}
+            scale={[LEN + 2 * ROOF.overhang, 0.13, 0.15]}
             castShadow
           />
           {edge && (
             <mesh
               geometry={unitBox}
               material={edge}
-              position={[0, -EAVE_DROP - 0.14, side * (D / 2 + ROOF.overhang + 0.06)]}
-              scale={[W + 2 * ROOF.overhang, 0.03, 0.17]}
+              position={[0, -EAVE_DROP - 0.14, side * (SPAN / 2 + ROOF.overhang + 0.06)]}
+              scale={[LEN + 2 * ROOF.overhang, 0.03, 0.17]}
             />
           )}
         </group>
       ))}
-      <mesh geometry={unitBox} material={m.trim} position={[0, ROOF.rise + 0.05, 0]} scale={[W + 2 * ROOF.overhang, 0.1, 0.34]} castShadow />
-      {/* Skylight over the stair, glowing at night. */}
+      <mesh geometry={unitBox} material={m.trim} position={[0, ROOF.rise + 0.05, 0]} scale={[LEN + 2 * ROOF.overhang, 0.1, 0.34]} castShadow />
+      {/* Skylight over the upstairs hall, glowing at night. */}
       <mesh
         geometry={unitBox}
         material={m.glass}
-        position={[-4.2, cy + 0.42 + Math.cos(SLOPE) * 0.1, cz - 1.0 * Math.cos(SLOPE)]}
+        position={[-0.6, cy + 0.42 + Math.cos(SLOPE) * 0.1, cz - 1.0 * Math.cos(SLOPE)]}
         rotation={[SLOPE, 0, 0]}
-        scale={[1.0, 0.04, 1.3]}
+        scale={[1.0, 0.04, 1.2]}
       />
+      </group>
     </group>
   );
 }
@@ -594,8 +649,10 @@ export function Site({
           renderOrder={2}
         />
       )}
-      <Parts parts={parts} highlight={highlight} />
-      {/* Side stair and landing up to the front door. */}
+      {parts.map((part, i) => (
+        <SiteMesh key={i} part={part} highlighted={Boolean(highlight && 'f' in part && part.f === highlight)} />
+      ))}
+      {/* Side stair and landing up to the entry door. */}
       <group visible={assembled}>
         <mesh geometry={unitBox} material={m.drive} position={[stairX, H / 2 - 0.01, (STAIR.landing[0] + STAIR.landing[1]) / 2]} scale={[stairWidth, H - 0.02, STAIR.landing[1] - STAIR.landing[0]]} castShadow receiveShadow />
         {Array.from({ length: STAIR.steps }, (_, i) => {

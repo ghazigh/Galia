@@ -117,6 +117,8 @@ test('the daylight panel follows the real sun and previews the day in 3D', async
 });
 
 test('a partner joins with an invite link and receives an assigned task', async ({ browser }) => {
+  // Two signed-in browsers each render the 3D house in software; give it room on slow runners.
+  test.slow();
   const page = ownerPage;
   await page.getByRole('link', { name: /^Settings/ }).click();
   await page.getByRole('button', { name: 'Invite your partner' }).click();
@@ -176,7 +178,7 @@ test('private to-dos stay private', async ({ browser }) => {
 test('poking the partner about a task', async () => {
   const page = ownerPage;
   await page.goto('/tasks?list=household');
-  await page.locator('[data-task-id]').filter({ hasText: 'Pick up the dry cleaning' }).click();
+  await page.getByRole('main').locator('[data-task-id]').filter({ hasText: 'Pick up the dry cleaning' }).click();
   const sheet = page.getByRole('dialog', { name: 'Pick up the dry cleaning' });
   await sheet.getByRole('button', { name: 'Poke Sam' }).click();
   // Sam has not turned on notifications in this browser, and the app says so.
@@ -201,7 +203,7 @@ test('asking the expert about a task', async () => {
     await route.fulfill({ json: { answer: 'Turn off the dishwasher first.\n- Twist the filter out\n- Rinse it in warm water' } });
   });
   await page.goto('/tasks?list=maintenance');
-  await page.locator('[data-task-id]').filter({ hasText: 'Clean the dishwasher filter' }).click();
+  await page.getByRole('main').locator('[data-task-id]').filter({ hasText: 'Clean the dishwasher filter' }).click();
   const sheet = page.getByRole('dialog', { name: 'Clean the dishwasher filter' });
   await sheet.getByRole('button', { name: 'Ask', exact: true }).click();
   await sheet.getByRole('button', { name: 'How do I do this?' }).click();
@@ -219,7 +221,7 @@ test('asking the expert about a task', async () => {
 test('swiping a task left reveals Delete', async () => {
   const page = ownerPage;
   await page.goto('/tasks?list=mine');
-  const row = page.locator('[data-task-id]').filter({ hasText: 'Plan the surprise party' });
+  const row = page.getByRole('main').locator('[data-task-id]').filter({ hasText: 'Plan the surprise party' });
   const box = (await row.boundingBox())!;
   const y = box.y + box.height / 2;
   await page.mouse.move(box.x + box.width - 40, y);
@@ -231,5 +233,5 @@ test('swiping a task left reveals Delete', async () => {
   await expect(page.getByText('Deleted “Plan the surprise party”')).toBeVisible();
   await expect(row).toHaveCount(0);
   await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(page.locator('[data-task-id]').filter({ hasText: 'Plan the surprise party' })).toBeVisible();
+  await expect(page.getByRole('main').locator('[data-task-id]').filter({ hasText: 'Plan the surprise party' })).toBeVisible();
 });

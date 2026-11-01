@@ -47,6 +47,7 @@ const PART_SPECS: Record<MaterialKey, Spec> = {
   tank: { color: '#eceef0', roughness: 0.45 },
   copper: { color: '#b4744a', roughness: 0.35, metalness: 0.75 },
   red: { color: '#cf2e27', roughness: 0.45 },
+  blue: { color: '#2f6fe0', roughness: 0.45 },
   panel: { color: '#a4abb4', roughness: 0.4, metalness: 0.4 },
   duct: { color: '#bcc3ca', roughness: 0.35, metalness: 0.6 },
   porcelain: { color: '#fbfbfb', roughness: 0.25 },

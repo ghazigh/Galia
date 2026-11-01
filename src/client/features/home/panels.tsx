@@ -25,7 +25,7 @@ import { useAppData, useUi } from '../../app/context';
 import { NavRow, QuickAction } from '../../components/nav';
 import { Button, cx, EmptyState, IconButton } from '../../components/ui';
 import { formatClock, PHASE_LABEL, type Daylight } from '../../lib/daylight';
-import { ROOMS } from '../../scene/layout';
+import { levelZones } from '../../scene/layout';
 import { useOpenTask } from '../tasks/actions';
 import { TaskRow } from '../tasks/TaskRow';
 import { moonPhaseName } from '@shared/astro';
@@ -228,20 +228,20 @@ export function LevelPanel({
   const { zoneLabel } = useAppData();
   return (
     <div className="px-2 pb-4">
-      {ROOMS[level].map((room) => {
-        const summary = summaries[room.zone];
+      {levelZones(level).map((zone) => {
+        const summary = summaries[zone];
         const health = summary?.health ?? 'empty';
         return (
           <button
-            key={room.zone}
+            key={zone}
             type="button"
-            onClick={() => onZone(room.zone)}
+            onClick={() => onZone(zone)}
             className="flex w-full items-center gap-4 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-surface-2 active:bg-sunken"
           >
             <span className={cx('size-2.5 shrink-0 rounded-full', health === 'empty' ? 'bg-line-strong' : HEALTH_DOT[health])} />
             <span className="min-w-0 flex-1">
-              <span className="block text-[16px] leading-tight font-medium text-ink">{zoneLabel(room.zone)}</span>
-              <span className="mt-0.5 block truncate text-[13px] text-ink-3">{zoneStatus(summary, zoneDef(room.zone).blurb)}</span>
+              <span className="block text-[16px] leading-tight font-medium text-ink">{zoneLabel(zone)}</span>
+              <span className="mt-0.5 block truncate text-[13px] text-ink-3">{zoneStatus(summary, zoneDef(zone).blurb)}</span>
             </span>
             <ChevronRight className="size-[18px] shrink-0 text-ink-3/70" strokeWidth={1.8} />
           </button>

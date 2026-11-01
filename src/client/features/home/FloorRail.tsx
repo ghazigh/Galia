@@ -4,7 +4,7 @@ import { House, Layers, LocateFixed } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { ComponentType } from 'react';
 import { cx } from '../../components/ui';
-import { ROOMS, type SceneView } from '../../scene/layout';
+import { levelZones, type SceneView } from '../../scene/layout';
 
 type RailItem = {
   key: string;
@@ -24,7 +24,7 @@ function worst(healths: (ZoneHealth | undefined)[]): ZoneHealth {
 }
 
 export function railItems(summaries: Partial<Record<ZoneId, ZoneSummary>>): RailItem[] {
-  const level = (key: 'upper' | 'ground' | 'basement') => worst(ROOMS[key].map((room) => summaries[room.zone]?.health));
+  const level = (key: 'upper' | 'ground' | 'basement') => worst(levelZones(key).map((zone) => summaries[zone]?.health));
   return [
     { key: 'house', label: 'House', aria: 'Show the outside of the house', icon: House, view: { kind: 'exterior' }, health: 'empty' },
     { key: 'floors', label: 'Floors', aria: 'Show all floors', icon: Layers, view: { kind: 'exploded' }, health: 'empty' },

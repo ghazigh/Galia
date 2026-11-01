@@ -1,8 +1,10 @@
-import type { FixtureId, ZoneId } from '@shared/types';
-import { D, T, W, WALL } from './layout';
+import type { FixtureId } from '@shared/types';
+import { D, H, W, WALL, YARD } from './layout';
 
-// Furniture and fixtures as data. Positions are level-local (y = 0 is the floor surface) except
-// for site parts, which are world positions at grade. Boxes and cylinders stand on `p`.
+// Furniture and fixtures as data. Room parts use floor-plan coordinates — the same numbers as the
+// illustrated house (src/client/house/furniture.tsx): x from the back of the house to the front,
+// y from the right side to the left, z up from the floor. Boxes are [corner, size]; cylinders
+// stand on their base center (or lie along an axis, centered). Site parts use scene coordinates.
 
 export type MaterialKey =
   | 'linen'
@@ -30,6 +32,7 @@ export type MaterialKey =
   | 'tank'
   | 'copper'
   | 'red'
+  | 'blue'
   | 'panel'
   | 'duct'
   | 'porcelain'
@@ -51,23 +54,23 @@ export type MaterialKey =
 
 export interface BoxPart {
   kind: 'box';
+  /** Corner (minimum x, y, z). */
   p: readonly [number, number, number];
   s: readonly [number, number, number];
   m: MaterialKey;
   /** Corner radius (rounded box). */
   r?: number;
   f?: FixtureId;
-  ry?: number;
 }
 
 export interface CylPart {
   kind: 'cyl';
+  /** Base center when standing; center when lying along an axis. */
   p: readonly [number, number, number];
   r: number;
   h: number;
   m: MaterialKey;
-  /** Lying along x or z instead of standing (p is then the center). */
-  axis?: 'x' | 'z';
+  axis?: 'x' | 'y';
   f?: FixtureId;
   seg?: number;
 }
@@ -85,13 +88,12 @@ export interface BallPart {
 
 export type Part = BoxPart | CylPart | BallPart;
 
-const box = (x: number, y: number, z: number, w: number, h: number, d: number, m: MaterialKey, extra: Partial<BoxPart> = {}): BoxPart => ({
-  kind: 'box',
-  p: [x, y, z],
-  s: [w, h, d],
-  m,
-  ...extra,
-});
+const box = (
+  [x, y, z]: readonly [number, number, number],
+  [sx, sy, sz]: readonly [number, number, number],
+  m: MaterialKey,
+  extra: Partial<BoxPart> = {},
+): BoxPart => ({ kind: 'box', p: [x, y, z], s: [sx, sy, sz], m, ...extra });
 const cyl = (x: number, y: number, z: number, r: number, h: number, m: MaterialKey, extra: Partial<CylPart> = {}): CylPart => ({
   kind: 'cyl',
   p: [x, y, z],
@@ -108,256 +110,328 @@ const ball = (x: number, y: number, z: number, r: number, m: MaterialKey, extra:
   ...extra,
 });
 
-const BACK = -D / 2 + T; // inside face of the back wall
-const FRONT = D / 2 - T;
+const rug = (x0: number, y0: number, x1: number, y1: number, m: MaterialKey = 'rug') => box([x0, y0, 0], [x1 - x0, y1 - y0, 0.012], m);
 
-function bed(x: number, z: number, width: number, duvet: MaterialKey, frame: MaterialKey = 'wood'): Part[] {
-  const length = 2.05;
-  const head = z - length / 2;
-  return [
-    box(x, 0, z, width + 0.08, 0.28, length + 0.04, frame, { r: 0.03 }),
-    box(x, 0.28, z + 0.02, width, 0.22, length - 0.04, 'linen', { r: 0.07 }),
-    box(x, 0.43, z + 0.32, width + 0.04, 0.09, length * 0.62, duvet, { r: 0.04 }),
-    ...(width > 1.2
-      ? [box(x - width / 4, 0.48, head + 0.3, width / 2 - 0.12, 0.13, 0.34, 'pillow', { r: 0.06 }), box(x + width / 4, 0.48, head + 0.3, width / 2 - 0.12, 0.13, 0.34, 'pillow', { r: 0.06 })]
-      : [box(x, 0.48, head + 0.3, width - 0.2, 0.13, 0.34, 'pillow', { r: 0.06 })]),
-    box(x, 0, head - 0.06, width + 0.16, 0.95, 0.08, 'woodDark', { r: 0.02 }),
+function plant(x: number, y: number, size = 1): Part[] {
+  return [cyl(x, y, 0, 0.17 * size, 0.36 * size, 'pot'), ball(x, y, 0.36 * size + 0.28 * size, 0.3 * size, 'plant', { facet: true, sy: 1.1 })];
+}
+
+/** Bed with its head against the wall at y0, running toward +y. */
+function bed(x: number, y0: number, width: number, blanket: MaterialKey, length = 2.0): Part[] {
+  const parts: Part[] = [
+    box([x - 0.04, y0 + 0.08, 0], [width + 0.08, length, 0.28], 'wood', { r: 0.03 }),
+    box([x, y0 + 0.1, 0.28], [width, length - 0.04, 0.22], 'linen', { r: 0.07 }),
+    box([x - 0.02, y0 + 0.75, 0.43], [width + 0.04, length * 0.62, 0.09], blanket, { r: 0.04 }),
+    box([x - 0.08, y0, 0], [width + 0.16, 0.08, 0.95], 'woodDark', { r: 0.02 }),
   ];
+  const pillows = width > 1.2 ? [x + 0.1, x + width / 2 + 0.04] : [x + 0.12];
+  for (const px of pillows) parts.push(box([px, y0 + 0.18, 0.48], [width > 1.2 ? width / 2 - 0.14 : width - 0.24, 0.34, 0.13], 'pillow', { r: 0.06 }));
+  return parts;
 }
 
-function plant(x: number, z: number, size = 1): Part[] {
-  return [cyl(x, 0, z, 0.17 * size, 0.36 * size, 'pot'), ball(x, 0.36 * size + 0.28 * size, z, 0.32 * size, 'plant', { facet: true, sy: 1.1 })];
+function nightstand(x: number, y = 0.18): Part[] {
+  return [box([x, y, 0], [0.45, 0.4, 0.5], 'woodLight'), cyl(x + 0.22, y + 0.2, 0.5, 0.02, 0.14, 'black'), cyl(x + 0.22, y + 0.2, 0.62, 0.12, 0.16, 'lamp', { seg: 18 })];
 }
 
-function lampShade(x: number, y: number, z: number): Part[] {
-  return [cyl(x, 0, z, 0.02, y, 'black'), cyl(x, y, z, 0.17, 0.22, 'lamp', { seg: 20 })];
-}
-
-function bedsideLamp(x: number, z: number): Part[] {
-  return [cyl(x, 0.5, z, 0.02, 0.14, 'black'), cyl(x, 0.62, z, 0.12, 0.16, 'lamp', { seg: 18 })];
-}
-
-function chair(x: number, z: number, facing: 'n' | 's' | 'e' | 'w'): Part[] {
-  const back: Record<typeof facing, [number, number, number, number]> = {
-    n: [x, z + 0.2, 0.42, 0.05],
-    s: [x, z - 0.2, 0.42, 0.05],
-    e: [x - 0.2, z, 0.05, 0.42],
-    w: [x + 0.2, z, 0.05, 0.42],
+/** Chair centered on (x, y) with its back on one side. */
+function chair(x: number, y: number, back: 'x0' | 'x1' | 'y0' | 'y1', seat: MaterialKey = 'cushion'): Part[] {
+  const s = 0.42;
+  const backs: Record<typeof back, [number, number, number, number]> = {
+    x0: [x - s / 2, y - s / 2, 0.05, s],
+    x1: [x + s / 2 - 0.05, y - s / 2, 0.05, s],
+    y0: [x - s / 2, y - s / 2, s, 0.05],
+    y1: [x - s / 2, y + s / 2 - 0.05, s, 0.05],
   };
-  const [bx, bz, bw, bd] = back[facing];
-  return [box(x, 0, z, 0.42, 0.45, 0.42, 'woodDark', { r: 0.02 }), box(bx, 0.45, bz, bw, 0.42, bd, 'woodDark')];
+  const [bx, by, bw, bd] = backs[back];
+  return [box([x - s / 2, y - s / 2, 0], [s, s, 0.45], seat, { r: 0.03 }), box([bx, by, 0.45], [bw, bd, 0.42], 'woodDark')];
 }
 
-// ── Rooms ─────────────────────────────────────────────────────────────────────────────────────
+/** A straight flight climbing from xBottom to xTop between y0 and y1. */
+function stairs(xBottom: number, xTop: number, y0: number, y1: number, steps = 9): Part[] {
+  const run = (xBottom - xTop) / steps;
+  return Array.from({ length: steps }, (_, i) =>
+    box([xBottom - (i + 1) * run, y0, 0], [run, y1 - y0, (WALL * (i + 1)) / steps], i % 2 ? 'wood' : 'woodLight'),
+  );
+}
 
-const ROOM_PARTS: Partial<Record<ZoneId, Part[]>> = {
-  garage: [
-    // A long, low red car parked nose to the door.
-    box(-3.4, 0.24, 0.45, 1.92, 0.56, 4.62, 'car', { r: 0.24, f: 'car' }),
-    box(-3.4, 0.7, 0.25, 1.58, 0.46, 2.55, 'carGlass', { r: 0.22, f: 'car' }),
-    ...[-0.9, 0.9].flatMap((dx) =>
-      [-1.35, 1.6].map((dz) => cyl(-3.4 + dx, 0.34, 0.45 + dz, 0.34, 0.26, 'tire', { axis: 'x', seg: 24 })),
-    ),
-    ...[-1.02, 1.02].flatMap((dx) => [-1.35, 1.6].map((dz) => cyl(-3.4 + dx, 0.34, 0.45 + dz, 0.2, 0.04, 'rim', { axis: 'x', seg: 20 }))),
-    // Shelving and a workbench.
-    box(-W / 2 + T + 0.24, 0, -1.4, 0.46, 1.95, 2.6, 'woodDark'),
-    ...[0.5, 1.05, 1.6].map((y) => box(-W / 2 + T + 0.26, y, -1.4, 0.4, 0.03, 2.5, 'wood')),
-    box(-W / 2 + T + 0.26, 0.53, -2.1, 0.32, 0.3, 0.42, 'cabinet'),
-    box(-W / 2 + T + 0.26, 1.08, -0.9, 0.32, 0.26, 0.5, 'terracotta'),
-    box(-W / 2 + T + 0.26, 1.63, -1.6, 0.32, 0.22, 0.6, 'sage'),
-    box(-1.4, 0, BACK + 0.32, 1.7, 0.88, 0.62, 'woodDark'),
-    box(-1.4, 0.88, BACK + 0.32, 1.76, 0.05, 0.66, 'wood'),
-    cyl(-5.75, 0, 3.4, 0.3, 1.0, 'black'),
-    cyl(-5.05, 0, 3.4, 0.3, 1.0, 'sage'),
+function clothesRail(x0: number, x1: number, y: number): Part[] {
+  const colors: MaterialKey[] = ['sage', 'terracotta', 'rugBlue', 'linen', 'lavender', 'sofa'];
+  const out: Part[] = [cyl((x0 + x1) / 2, y, 1.75, 0.018, x1 - x0, 'steel', { axis: 'x' })];
+  for (let x = x0 + 0.1, i = 0; x < x1 - 0.1; x += 0.22, i += 1) out.push(box([x, y - 0.22, 0.95], [0.06, 0.44, 0.78], colors[i % colors.length]));
+  return out;
+}
+
+const alarm = (x: number, y: number): Part => cyl(x, y, WALL - 0.045, 0.1, 0.045, 'porcelain', { f: 'smoke-detectors' });
+
+function toilet(x: number, y: number): Part[] {
+  return [box([x + 0.02, y - 0.02, 0.35], [0.38, 0.18, 0.42], 'porcelain', { r: 0.04 }), box([x, y + 0.08, 0], [0.4, 0.52, 0.42], 'porcelain', { r: 0.12 })];
+}
+
+// ── Rooms (keyed by plan part) ───────────────────────────────────────────────────────────────
+
+const ROOM_PARTS: Record<string, Part[]> = {
+  // Basement
+  family: [
+    rug(0.6, 0.95, 2.95, 2.6),
+    cyl(0.35, 0.45, 0, 0.025, 1.3, 'black'),
+    cyl(0.35, 0.45, 1.3, 0.2, 0.28, 'lamp', { seg: 20 }),
+    box([0.7, 0.2, 0], [0.22, 0.9, 0.62], 'sofa', { r: 0.08 }),
+    box([0.92, 0.2, 0], [1.76, 0.9, 0.42], 'sofa', { r: 0.08 }),
+    box([0.92, 0.2, 0.36], [1.76, 0.26, 0.5], 'sofa', { r: 0.1 }),
+    box([0.94, 0.44, 0.4], [0.86, 0.62, 0.12], 'cushion', { r: 0.05 }),
+    box([1.82, 0.44, 0.4], [0.84, 0.62, 0.12], 'cushion', { r: 0.05 }),
+    box([2.68, 0.2, 0], [0.22, 0.9, 0.62], 'sofa', { r: 0.08 }),
+    box([1.35, 1.55, 0], [0.9, 0.5, 0.3], 'woodDark'),
+    box([1.25, 1.47, 0.3], [1.1, 0.66, 0.06], 'wood'),
+    box([1.45, 1.6, 0.36], [0.32, 0.24, 0.05], 'terracotta'),
+    ...plant(3.15, 0.45),
+  ],
+  laundry: [
+    // Dryer, then washer, facing the family room.
+    box([0.42, 3.18, 0], [0.82, 0.78, 0.92], 'appliance', { r: 0.03, f: 'dryer' }),
+    cyl(0.83, 3.16, 0.55, 0.22, 0.03, 'black', { axis: 'y', f: 'dryer' }),
+    box([1.3, 3.18, 0], [0.82, 0.78, 0.92], 'appliance', { r: 0.03, f: 'washer' }),
+    cyl(1.71, 3.16, 0.55, 0.22, 0.03, 'carGlass', { axis: 'y', f: 'washer' }),
+    // Exhaust duct up the back wall and out.
+    box([0.02, 3.45, 0.9], [0.14, 0.22, 1.4], 'duct', { f: 'dryer-vent' }),
+    cyl(0.3, 3.56, 0.88, 0.075, 0.5, 'duct', { axis: 'x', f: 'dryer-vent' }),
   ],
   mechanical: [
-    // Heat pump air handler with its supply duct.
-    box(1.75, 0, BACK + 0.36, 0.78, 1.65, 0.66, 'heatPump', { r: 0.03, f: 'heat-pump' }),
-    box(1.75, 1.65, BACK + 0.36, 0.5, WALL - 1.65, 0.5, 'duct', { f: 'heat-pump' }),
-    box(1.75, 0.35, BACK + 0.695, 0.6, 0.5, 0.02, 'grille', { f: 'heat-pump' }),
-    // Hot water tank.
-    cyl(3.15, 0, BACK + 0.42, 0.34, 1.55, 'tank', { f: 'water-heater', seg: 28 }),
-    cyl(3.0, 1.55, BACK + 0.42, 0.035, WALL - 1.55, 'copper'),
-    cyl(3.3, 1.55, BACK + 0.42, 0.035, WALL - 1.55, 'copper'),
-    // Main water shutoff: a copper riser with a red valve.
-    cyl(4.45, 0, BACK + 0.1, 0.045, 1.2, 'copper', { f: 'water-main' }),
-    box(4.45, 0.42, BACK + 0.17, 0.2, 0.06, 0.1, 'red', { f: 'water-main' }),
-    // Electrical panel.
-    box(5.55, 1.0, BACK + 0.06, 0.62, 0.86, 0.12, 'panel', { f: 'electrical-panel' }),
-    // Washer and dryer along the right wall, with the dryer's duct to the outside.
-    box(W / 2 - T - 0.36, 0, -1.25, 0.68, 0.9, 0.66, 'appliance', { r: 0.03, f: 'washer' }),
-    cyl(W / 2 - T - 0.71, 0.5, -1.25, 0.21, 0.03, 'carGlass', { axis: 'x', f: 'washer' }),
-    box(W / 2 - T - 0.36, 0, -2.25, 0.68, 0.9, 0.66, 'appliance', { r: 0.03, f: 'dryer' }),
-    cyl(W / 2 - T - 0.71, 0.5, -2.25, 0.21, 0.03, 'black', { axis: 'x', f: 'dryer' }),
-    cyl(W / 2 - T - 0.08, 0.9, -2.25, 0.075, 0.32, 'duct', { f: 'dryer-vent' }),
-    cyl(W / 2 - T - 0.08, 1.2, -2.25, 0.075, 0.16, 'duct', { axis: 'x', f: 'dryer-vent' }),
-    box(1.0, 0, 2.6, 0.55, 0.55, 0.42, 'rugBlue', { r: 0.05 }),
+    // Heat pump air handler with its supply duct, hot water tank, air exchanger up high.
+    box([0.15, 4.15, 0], [0.8, 0.8, 1.65], 'heatPump', { r: 0.03, f: 'heat-pump' }),
+    box([0.94, 4.25, 0.25], [0.02, 0.6, 0.6], 'grille', { f: 'heat-pump' }),
+    box([0.3, 4.3, 1.65], [0.5, 0.5, WALL - 1.65], 'duct', { f: 'heat-pump' }),
+    cyl(1.75, 4.72, 0, 0.36, 1.5, 'tank', { f: 'water-heater', seg: 28 }),
+    cyl(1.62, 4.72, 1.5, 0.035, WALL - 1.5, 'copper'),
+    cyl(1.88, 4.72, 1.5, 0.035, WALL - 1.5, 'copper'),
+    box([0.25, 4.95, 1.45], [0.85, 0.36, 0.42], 'appliance', { r: 0.03, f: 'air-exchanger' }),
+    cyl(0.67, 5.13, 1.87, 0.08, WALL - 1.87, 'duct', { f: 'air-exchanger' }),
   ],
-  entry: [
-    // Stair up along the back wall.
-    ...Array.from({ length: 9 }, (_, i) => box(-3.98 - i * 0.26 - 0.13, 0, BACK + 0.55, 0.26, 0.3 * (i + 1), 1.1, i % 2 ? 'wood' : 'woodLight')),
-    box(-4.9, 0, FRONT - 0.24, 1.15, 0.45, 0.4, 'wood', { r: 0.03 }),
-    box(-W / 2 + T + 0.45, 0, 1.2, 0.8, 0.012, 1.1, 'mat'),
-    cyl(-W / 2 + T + 0.3, 0, 3.1, 0.025, 1.7, 'black'),
-    ball(-W / 2 + T + 0.3, 1.62, 3.1, 0.13, 'terracotta'),
-    ...plant(-4.15, 2.1, 1.1),
+  sump: [
+    cyl(0.55, 6.0, 0, 0.3, 0.02, 'black'),
+    cyl(0.55, 6.0, 0.02, 0.12, 0.3, 'blue', { f: 'sump-pump' }),
+    cyl(0.42, 6.12, 0.3, 0.035, 1.6, 'porcelain', { f: 'sump-pump' }),
+    // Electrical panel and the main water shutoff on the back wall.
+    box([0.02, 5.45, 1.0], [0.12, 0.5, 0.76], 'panel', { f: 'electrical-panel' }),
+    box([0.13, 5.52, 1.55], [0.02, 0.36, 0.08], 'blue', { f: 'electrical-panel' }),
+    cyl(0.08, 6.35, 0, 0.04, 1.1, 'copper', { f: 'water-main' }),
+    box([0.03, 6.23, 0.48], [0.14, 0.25, 0.08], 'blue', { f: 'water-main' }),
   ],
+  'basement-hall': [alarm(3.0, 3.5)],
+  'basement-stairs': stairs(3.45, 1.2, 5.45, 6.55),
+  garage: [
+    box([3.75, 0.16, 0], [1.0, 0.46, 1.45], 'woodDark'),
+    ...[0.48, 0.96].map((z) => box([3.77, 0.18, z], [0.96, 0.42, 0.03], 'wood')),
+    box([3.82, 0.22, 0.03], [0.36, 0.36, 0.36], 'terracotta'),
+    box([4.28, 0.22, 0.03], [0.36, 0.36, 0.36], 'sage'),
+    box([4.35, 0.22, 0.99], [0.36, 0.36, 0.3], 'cabinet'),
+    box([8.75, 0.25, 0], [0.55, 0.6, 0.95], 'sage', { r: 0.04 }),
+    box([9.38, 0.25, 0], [0.55, 0.6, 0.95], 'rugBlue', { r: 0.04 }),
+    // A long, low red car, nose to the garage door.
+    box([4.95, 2.35, 0.24], [4.5, 1.9, 0.56], 'car', { r: 0.24, f: 'car' }),
+    box([5.85, 2.52, 0.7], [2.45, 1.56, 0.46], 'carGlass', { r: 0.22, f: 'car' }),
+    ...[5.75, 8.65].flatMap((x) => [2.32, 4.28].map((y) => cyl(x, y, 0.34, 0.34, 0.26, 'tire', { axis: 'y', seg: 24 }))),
+    ...[5.75, 8.65].flatMap((x) => [2.18, 4.42].map((y) => cyl(x, y, 0.34, 0.2, 0.04, 'rim', { axis: 'y', seg: 20 }))),
+  ],
+
+  // Ground floor
   living: [
-    box(-1.0, 0, 0.35, 3.1, 0.012, 2.4, 'rug'),
-    // Sofa against the back wall.
-    box(-1.0, 0, BACK + 0.5, 2.8, 0.42, 0.98, 'sofa', { r: 0.08 }),
-    box(-1.0, 0.36, BACK + 0.14, 2.8, 0.5, 0.26, 'sofa', { r: 0.1 }),
-    box(-2.3, 0.36, BACK + 0.55, 0.22, 0.24, 0.92, 'sofa', { r: 0.08 }),
-    box(0.3, 0.36, BACK + 0.55, 0.22, 0.24, 0.92, 'sofa', { r: 0.08 }),
-    box(-1.62, 0.4, BACK + 0.56, 1.18, 0.14, 0.7, 'cushion', { r: 0.06 }),
-    box(-0.38, 0.4, BACK + 0.56, 1.18, 0.14, 0.7, 'cushion', { r: 0.06 }),
-    box(-1.0, 0, -1.55, 1.25, 0.38, 0.62, 'woodDark', { r: 0.04 }),
-    box(-0.75, 0.38, -1.55, 0.32, 0.03, 0.24, 'terracotta'),
-    // Lounge chair facing the sofa, lamp and plants.
-    box(0.85, 0, 1.2, 0.85, 0.42, 0.85, 'cushion', { r: 0.12 }),
-    box(0.85, 0.32, 1.55, 0.85, 0.5, 0.2, 'cushion', { r: 0.08 }),
-    ...lampShade(-3.2, 1.45, BACK + 0.3),
-    ...plant(1.25, BACK + 0.35, 1.25),
-    box(-3.35, 0, 1.0, 0.36, 1.6, 1.4, 'woodLight'),
+    rug(0.25, 0.8, 2.85, 3.2),
+    box([0.2, 0.8, 0], [0.9, 0.22, 0.62], 'sofa', { r: 0.08 }),
+    box([0.2, 1.02, 0], [0.9, 1.96, 0.42], 'sofa', { r: 0.08 }),
+    box([0.2, 1.02, 0.36], [0.26, 1.96, 0.5], 'sofa', { r: 0.1 }),
+    box([0.46, 1.04, 0.4], [0.62, 0.96, 0.12], 'cushion', { r: 0.05 }),
+    box([0.46, 2.02, 0.4], [0.62, 0.94, 0.12], 'cushion', { r: 0.05 }),
+    box([0.2, 2.98, 0], [0.9, 0.22, 0.62], 'sofa', { r: 0.08 }),
+    box([1.55, 1.55, 0], [0.5, 0.96, 0.3], 'woodDark'),
+    box([1.45, 1.43, 0.3], [0.7, 1.2, 0.06], 'wood'),
+    box([1.58, 1.62, 0.36], [0.26, 0.36, 0.05], 'terracotta'),
+    box([2.2, 0.3, 0], [0.75, 0.75, 0.42], 'cushion', { r: 0.1 }),
+    box([2.2, 0.3, 0.36], [0.75, 0.18, 0.46], 'cushion', { r: 0.06 }),
+    box([0.25, 0.25, 0], [0.4, 0.4, 0.5], 'wood'),
+    ...plant(2.75, 3.75, 1.15),
+  ],
+  dining: [
+    box([3.75, 1.6, 0.7], [1.8, 0.95, 0.06], 'wood', { r: 0.02 }),
+    ...[
+      [3.85, 1.68],
+      [5.45, 1.68],
+      [3.85, 2.5],
+      [5.45, 2.5],
+    ].map(([x, y]) => box([x, y, 0], [0.06, 0.06, 0.7], 'woodDark')),
+    ...chair(4.16, 1.26, 'y0'),
+    ...chair(5.06, 1.26, 'y0'),
+    ...chair(3.51, 2.11, 'x0'),
+    ...chair(5.96, 2.11, 'x1'),
+    ...chair(4.16, 2.91, 'y1'),
+    ...chair(5.06, 2.91, 'y1'),
+    cyl(4.65, 2.07, 1.9, 0.008, WALL - 1.9, 'black'),
+    cyl(4.65, 2.07, 1.76, 0.2, 0.14, 'lamp', { seg: 20 }),
   ],
   kitchen: [
-    // Counter run: sink under the window, dishwasher, range under the hood, fridge at the end.
-    box(3.75, 0, BACK + 0.31, 3.6, 0.86, 0.62, 'cabinet'),
-    box(3.75, 0.86, BACK + 0.33, 3.66, 0.05, 0.66, 'counter'),
-    box(3.15, 0.875, BACK + 0.3, 0.6, 0.04, 0.4, 'steel'),
-    cyl(3.15, 0.91, BACK + 0.08, 0.025, 0.32, 'steel'),
-    box(3.85, 0.05, BACK + 0.625, 0.58, 0.76, 0.02, 'steel', { f: 'dishwasher' }),
-    box(4.95, 0.06, BACK + 0.625, 0.74, 0.68, 0.02, 'black'),
-    box(4.95, 0.9, BACK + 0.33, 0.72, 0.02, 0.55, 'black'),
-    box(4.95, 1.82, BACK + 0.25, 0.82, 0.3, 0.5, 'steel', { f: 'range-hood' }),
-    box(4.95, 2.12, BACK + 0.15, 0.3, WALL - 2.12, 0.3, 'steel', { f: 'range-hood' }),
-    box(6.0, 0, BACK + 0.36, 0.74, 1.95, 0.72, 'appliance', { r: 0.03, f: 'fridge' }),
-    box(5.79, 0.9, BACK + 0.73, 0.03, 0.6, 0.03, 'steel', { f: 'fridge' }),
-    // Dining table with chairs and a pendant.
-    box(3.7, 0.7, 1.35, 1.6, 0.05, 0.9, 'wood', { r: 0.02 }),
-    ...[-0.7, 0.7].flatMap((dx) => [-0.38, 0.38].map((dz) => box(3.7 + dx, 0, 1.35 + dz, 0.05, 0.7, 0.05, 'woodDark'))),
-    ...chair(3.3, 0.6, 'n'),
-    ...chair(4.1, 0.6, 'n'),
-    ...chair(3.3, 2.1, 's'),
-    ...chair(4.1, 2.1, 's'),
-    cyl(3.7, 1.9, 1.35, 0.008, WALL - 1.9, 'black'),
-    cyl(3.7, 1.78, 1.35, 0.2, 0.14, 'lamp', { seg: 20 }),
-    // Fire extinguisher by the doorway.
-    cyl(2.03, 0.12, 3.4, 0.085, 0.46, 'red', { f: 'fire-extinguisher', seg: 16 }),
-    cyl(2.03, 0.58, 3.4, 0.035, 0.08, 'black', { f: 'fire-extinguisher' }),
-    ...plant(6.05, 3.5, 0.9),
+    box([6.45, 0.16, 0], [0.88, 0.74, 1.85], 'appliance', { r: 0.03, f: 'fridge' }),
+    box([7.2, 0.9, 0.75], [0.03, 0.03, 0.6], 'steel', { f: 'fridge' }),
+    box([7.35, 0.16, 0], [2.6, 0.62, 0.86], 'cabinet'),
+    box([7.33, 0.14, 0.86], [2.64, 0.66, 0.06], 'counter'),
+    box([8.18, 0.77, 0.1], [0.8, 0.02, 0.66], 'black'),
+    box([8.2, 0.2, 0.92], [0.76, 0.52, 0.01], 'black'),
+    box([8.17, 0.16, 1.8], [0.8, 0.5, 0.3], 'steel', { f: 'range-hood' }),
+    box([8.42, 0.16, 2.1], [0.3, 0.3, WALL - 2.1], 'steel', { f: 'range-hood' }),
+    // Island with the sink; the dishwasher faces the range.
+    box([6.5, 1.95, 0], [2.35, 0.95, 0.86], 'cabinet'),
+    box([6.46, 1.91, 0.86], [2.43, 1.03, 0.06], 'counter'),
+    box([7.12, 2.08, 0.875], [0.72, 0.46, 0.05], 'steel'),
+    cyl(7.48, 2.0, 0.92, 0.025, 0.32, 'steel'),
+    box([8.25, 1.93, 0.05], [0.6, 0.02, 0.76], 'steel', { f: 'dishwasher' }),
+    ...[6.95, 7.5, 8.15].flatMap((x) => [cyl(x, 3.22, 0, 0.03, 0.65, 'black'), cyl(x, 3.22, 0.62, 0.17, 0.05, 'wood', { seg: 18 })]),
+    cyl(9.75, 3.75, 0, 0.09, 0.46, 'red', { f: 'fire-extinguisher', seg: 16 }),
+    cyl(9.75, 3.75, 0.46, 0.04, 0.07, 'black', { f: 'fire-extinguisher' }),
   ],
-  bedroom1: [
-    ...bed(-4.45, BACK + 1.08, 1.62, 'sage'),
-    box(-5.62, 0, BACK + 0.25, 0.45, 0.5, 0.4, 'woodLight'),
-    box(-3.28, 0, BACK + 0.25, 0.45, 0.5, 0.4, 'woodLight'),
-    ...bedsideLamp(-5.62, BACK + 0.25),
-    ...bedsideLamp(-3.28, BACK + 0.25),
-    box(-W / 2 + T + 0.31, 0, 1.75, 0.6, 2.1, 1.7, 'woodLight'),
-    box(-4.4, 0, 0.9, 2.2, 0.012, 1.5, 'rug'),
-    ...plant(-3.05, 3.4, 1.0),
+  'ground-stairs': [...stairs(3.45, 1.25, 4.2, 5.3), alarm(2.0, 4.15)],
+  entry: [
+    box([4.7, 6.0, 0], [0.8, 0.55, 0.012], 'mat'),
+    box([5.68, 4.18, 0], [1.18, 0.86, 2.1], 'cabinet'),
+    box([3.75, 6.05, 0], [0.85, 0.42, 0.45], 'wood', { r: 0.03 }),
+    box([3.82, 5.7, 0], [0.12, 0.22, 0.1], 'black'),
+    box([4.02, 5.7, 0], [0.12, 0.22, 0.1], 'black'),
+    ...plant(6.6, 6.3),
   ],
+  'entry-hall': [rug(7.05, 5.8, 8.3, 6.4, 'rugBlue')],
+  powder: [
+    box([6.98, 4.18, 0], [0.52, 0.45, 0.82], 'wood'),
+    box([6.96, 4.16, 0.82], [0.56, 0.49, 0.05], 'porcelain'),
+    ...toilet(7.8, 4.18),
+  ],
+  'ground-closet': [
+    box([8.55, 4.6, 0], [0.42, 2.0, 1.1], 'wood'),
+    box([8.6, 4.75, 1.1], [0.36, 0.4, 0.26], 'terracotta'),
+    box([8.6, 5.3, 1.1], [0.36, 0.4, 0.22], 'sage'),
+  ],
+
+  // Upper floor
+  bedroom2: [rug(0.6, 2.0, 2.7, 3.05, 'rugBlue'), ...nightstand(0.32), ...bed(0.85, 0.16, 1.4, 'sage'), ...nightstand(2.38), ...plant(2.9, 2.85)],
+  'bedroom2-closet': clothesRail(0.3, 2.3, 3.85),
   bathroom: [
-    box(-1.1, 0, BACK + 0.4, 1.7, 0.55, 0.78, 'porcelain', { r: 0.12, f: 'bathtub' }),
-    box(-1.1, 0.5, BACK + 0.4, 1.46, 0.03, 0.56, 'water', { r: 0.1, f: 'bathtub' }),
-    // Shower: tray, glass and head in the front corner.
-    box(-1.72, 0, FRONT - 0.48, 0.92, 0.06, 0.92, 'porcelain', { f: 'shower' }),
-    box(-1.27, 0.06, FRONT - 0.48, 0.02, 1.9, 0.9, 'glassPane', { f: 'shower' }),
-    cyl(-2.12, 1.85, FRONT - 0.48, 0.07, 0.03, 'steel', { f: 'shower' }),
-    // Toilet and vanity against the partition.
-    box(0.0, 0, -1.4, 0.55, 0.42, 0.4, 'porcelain', { r: 0.12 }),
-    box(0.06, 0.42, -1.4, 0.2, 0.38, 0.42, 'porcelain', { r: 0.04 }),
-    box(-0.05, 0, 1.05, 0.5, 0.82, 1.0, 'woodLight'),
-    box(-0.05, 0.82, 1.05, 0.52, 0.05, 1.02, 'porcelain'),
-    box(0.11, 1.15, 1.05, 0.03, 0.75, 0.75, 'screen'),
-    box(-1.1, WALL - 0.04, -2.6, 0.32, 0.04, 0.32, 'grille', { f: 'bath-fan' }),
-    box(-0.9, 0, 0.0, 0.6, 0.012, 0.9, 'rugBlue'),
+    rug(4.3, 0.5, 4.85, 1.25, 'sage'),
+    box([5.05, 0.18, 0], [0.95, 1.6, 0.56], 'porcelain', { r: 0.12, f: 'bathtub' }),
+    box([5.14, 0.27, 0.5], [0.77, 1.42, 0.03], 'water', { r: 0.1, f: 'bathtub' }),
+    box([3.27, 1.25, 0], [0.55, 0.95, 0.82], 'wood'),
+    box([3.25, 1.23, 0.82], [0.59, 0.99, 0.05], 'porcelain'),
+    box([3.22, 1.4, 1.15], [0.03, 0.65, 0.7], 'screen'),
+    ...toilet(3.47, 0.3),
+    // Glass shower.
+    box([5.05, 1.88, 0], [0.95, 1.3, 0.08], 'porcelain', { f: 'shower' }),
+    box([5.05, 1.88, 0.08], [0.02, 1.3, 1.87], 'glassPane', { f: 'shower' }),
+    box([5.05, 1.88, 0.08], [0.95, 0.02, 1.87], 'glassPane', { f: 'shower' }),
+    cyl(5.8, 3.0, 1.8, 0.09, 0.03, 'steel', { f: 'shower' }),
+    box([4.25, 1.45, WALL - 0.04], [0.3, 0.3, 0.04], 'grille', { f: 'bath-fan' }),
   ],
-  bedroom2: [
-    ...bed(1.5, BACK + 1.08, 1.4, 'lavender'),
-    box(2.98, 0, 1.6, 0.56, 0.74, 1.15, 'wood'),
-    ...chair(2.55, 1.6, 'e'),
-    box(2.98, 0.74, 1.7, 0.06, 0.32, 0.5, 'screen'),
-    ...plant(0.65, 3.45, 0.9),
+  'upper-hall': [rug(2.7, 3.55, 5.8, 4.05), alarm(4.2, 3.8)],
+  bedroom1: [
+    rug(6.85, 1.9, 9.25, 3.15),
+    ...nightstand(6.6),
+    ...bed(7.15, 0.16, 1.8, 'terracotta'),
+    ...nightstand(9.05),
+    box([9.45, 2.55, 0], [0.45, 1.3, 0.85], 'wood'),
+    ...plant(9.65, 3.95, 0.9),
   ],
   bedroom3: [
-    ...bed(5.75, -1.8, 1.0, 'terracotta'),
-    box(4.35, 0, BACK + 0.2, 0.95, 1.85, 0.36, 'woodLight'),
-    ...[0.6, 1.2].map((y) => box(4.35, y, BACK + 0.22, 0.88, 0.03, 0.32, 'woodDark')),
-    box(4.45, 0, FRONT - 0.33, 1.3, 0.74, 0.6, 'wood'),
-    ...chair(4.45, FRONT - 0.85, 's'),
-    box(4.45, 0.74, FRONT - 0.18, 0.62, 0.38, 0.05, 'screen'),
+    box([3.55, 4.45, 0], [0.6, 1.95, 2.0], 'cabinet'),
+    rug(5.05, 5.3, 6.95, 6.3),
+    ...bed(5.35, 4.42, 1.35, 'lavender'),
+    box([7.15, 5.55, 0], [0.5, 0.06, 0.72], 'woodDark'),
+    box([7.15, 6.45, 0], [0.5, 0.06, 0.72], 'woodDark'),
+    box([7.12, 5.52, 0.72], [0.56, 1.02, 0.05], 'wood'),
+    box([7.58, 5.8, 0.77], [0.03, 0.44, 0.3], 'screen'),
+    ...chair(6.83, 6.06, 'x0', 'sofa'),
   ],
+  'walk-in': [...clothesRail(7.95, 9.9, 6.2), box([9.5, 4.45, 0], [0.42, 1.1, 0.95], 'wood')],
 };
 
-/** Smoke and CO alarms, one per storey (they follow the house-wide "smoke detectors" fixture). */
-const ALARMS: Partial<Record<ZoneId, Part[]>> = {
-  mechanical: [cyl(3.6, WALL - 0.045, 0.2, 0.1, 0.045, 'porcelain', { f: 'smoke-detectors' })],
-  entry: [cyl(-5.3, WALL - 0.045, -1.0, 0.1, 0.045, 'porcelain', { f: 'smoke-detectors' })],
-  bedroom1: [cyl(-4.6, WALL - 0.045, 0.4, 0.1, 0.045, 'porcelain', { f: 'smoke-detectors' })],
-};
-
-export function roomParts(zone: ZoneId): Part[] {
-  return [...(ROOM_PARTS[zone] ?? []), ...(ALARMS[zone] ?? [])];
+export function rectParts(id: string): Part[] {
+  return ROOM_PARTS[id] ?? [];
 }
 
-// ── Outside ───────────────────────────────────────────────────────────────────────────────────
+// ── Outside (scene coordinates) ──────────────────────────────────────────────────────────────
 
-const YARD_X0 = W / 2 + 0.7;
-const YARD_X1 = W / 2 + 8.6;
-const YARD_Z0 = -D / 2 - 1.6;
-const YARD_Z1 = D / 2 + 1.2;
+/** Site parts in scene space: x across the house, z toward the street, y up. */
+export interface SitePartBox {
+  kind: 'box';
+  /** Center of the base. */
+  at: readonly [number, number, number];
+  s: readonly [number, number, number];
+  m: MaterialKey;
+  r?: number;
+  f?: FixtureId;
+}
 
-export function siteParts(): Part[] {
-  const fence: Part[] = [];
+export type SitePart = SitePartBox | { kind: 'cyl'; at: readonly [number, number, number]; r: number; h: number; m: MaterialKey; axis?: 'x' | 'z'; f?: FixtureId; seg?: number } | BallPart;
+
+const sbox = (at: readonly [number, number, number], s: readonly [number, number, number], m: MaterialKey, extra: Partial<SitePartBox> = {}): SitePartBox => ({
+  kind: 'box',
+  at,
+  s,
+  m,
+  ...extra,
+});
+
+export function siteParts(): SitePart[] {
+  const back = -D / 2;
+  const fence: SitePart[] = [];
+  const width = YARD.x1 - YARD.x0;
+  const depth = YARD.z1 - YARD.z0;
   for (let i = 0; i < 4; i += 1) {
     const y = 0.18 + i * 0.24;
-    fence.push(box((YARD_X0 + YARD_X1) / 2 + 0.3, y, YARD_Z0, YARD_X1 - YARD_X0 + 0.6, 0.15, 0.05, 'fence'));
-    fence.push(box(YARD_X1, y, (YARD_Z0 + YARD_Z1) / 2, 0.05, 0.15, YARD_Z1 - YARD_Z0, 'fence'));
+    fence.push(sbox([(YARD.x0 + YARD.x1) / 2, y, YARD.z0], [width + 0.05, 0.15, 0.05], 'fence'));
+    fence.push(sbox([YARD.x0, y, (YARD.z0 + YARD.z1) / 2], [0.05, 0.15, depth], 'fence'));
+    fence.push(sbox([YARD.x1, y, (YARD.z0 + YARD.z1) / 2], [0.05, 0.15, depth], 'fence'));
   }
-  for (let x = YARD_X0; x <= YARD_X1 + 0.01; x += (YARD_X1 - YARD_X0) / 6) fence.push(box(x, 0, YARD_Z0, 0.08, 1.12, 0.08, 'black'));
-  for (let z = YARD_Z0; z <= YARD_Z1 + 0.01; z += (YARD_Z1 - YARD_Z0) / 5) fence.push(box(YARD_X1, 0, z, 0.08, 1.12, 0.08, 'black'));
-
-  const pavers: Part[] = [];
-  for (let i = 0; i < 4; i += 1) pavers.push(box(-W / 2 - 0.7 + (i % 2) * 0.12, 0, D / 2 + 0.6 + i * 0.75, 0.9, 0.04, 0.55, 'paver'));
-  for (let i = 0; i < 5; i += 1) pavers.push(cyl(YARD_X0 + 0.6 + i * 0.95, 0.06, D / 2 + 0.3 - (i % 2) * 0.25, 0.28, 0.03, 'paver', { seg: 20 }));
+  for (let i = 0; i <= 5; i += 1) fence.push(sbox([YARD.x0 + (width / 5) * i, 0, YARD.z0], [0.08, 1.12, 0.08], 'black'));
+  for (let i = 0; i <= 4; i += 1) {
+    fence.push(sbox([YARD.x0, 0, YARD.z0 + (depth / 4) * i], [0.08, 1.12, 0.08], 'black'));
+    fence.push(sbox([YARD.x1, 0, YARD.z0 + (depth / 4) * i], [0.08, 1.12, 0.08], 'black'));
+  }
+  const pavers: SitePart[] = [];
+  for (let i = 0; i < 4; i += 1) pavers.push(sbox([-W / 2 - 0.75 + (i % 2) * 0.12, 0, 4.6 + i * 0.75], [0.9, 0.04, 0.55], 'paver'));
+  for (let i = 0; i < 5; i += 1) {
+    pavers.push({ kind: 'cyl', at: [-W / 2 + 0.2 - (i % 2) * 0.3, 0.06, back - 3.0 - i * 0.6], r: 0.27, h: 0.03, m: 'paver', seg: 20 });
+  }
 
   return [
-    // Patio with two lounge chairs.
-    box((YARD_X0 + YARD_X0 + 3.0) / 2, 0.06, -2.4, 3.0, 0.06, 2.8, 'concrete'),
-    box(YARD_X0 + 0.9, 0.12, -2.6, 0.65, 0.32, 1.7, 'woodLight', { r: 0.04 }),
-    box(YARD_X0 + 2.0, 0.12, -2.6, 0.65, 0.32, 1.7, 'woodLight', { r: 0.04 }),
-    box(YARD_X0 + 0.9, 0.44, -3.25, 0.62, 0.08, 0.5, 'linen', { r: 0.03 }),
-    box(YARD_X0 + 2.0, 0.44, -3.25, 0.62, 0.08, 0.5, 'linen', { r: 0.03 }),
-    // Heat pump outdoor unit on its pad, against the house.
-    box(W / 2 + 0.62, 0.06, 0.2, 0.62, 0.08, 1.2, 'concrete'),
-    box(W / 2 + 0.6, 0.14, 0.2, 0.46, 0.82, 1.0, 'heatPump', { r: 0.03, f: 'heat-pump-outdoor' }),
-    cyl(W / 2 + 0.84, 0.55, 0.2, 0.3, 0.02, 'grille', { axis: 'x', seg: 28, f: 'heat-pump-outdoor' }),
-    // Dryer vent hood and outdoor faucet with a hose reel on the right wall.
-    box(W / 2 + 0.09, 1.08, -2.25, 0.18, 0.24, 0.28, 'steel', { f: 'dryer-vent' }),
-    cyl(W / 2 + 0.08, 0.5, 2.7, 0.04, 0.14, 'copper', { axis: 'x', f: 'hose-bib' }),
-    cyl(W / 2 + 0.3, 0.32, 3.25, 0.26, 0.14, 'hose', { axis: 'x', seg: 24, f: 'hose-bib' }),
-    // Tree and shrubs.
-    cyl(12.7, 0, -3.4, 0.15, 2.1, 'trunk', { seg: 10 }),
-    ball(12.7, 2.7, -3.4, 1.25, 'leaves', { facet: true }),
-    ball(12.15, 2.25, -2.85, 0.85, 'leavesDark', { facet: true }),
-    ball(13.25, 2.35, -3.0, 0.8, 'leaves', { facet: true }),
-    ball(13.9, 0.45, 3.4, 0.5, 'leavesDark', { facet: true }),
-    ball(13.2, 0.38, 3.75, 0.42, 'leaves', { facet: true }),
-    ball(W / 2 + 0.55, 0.36, 3.6, 0.42, 'leaves', { facet: true }),
+    // Patio off the back of the house, with two lounge chairs.
+    sbox([0.9, 0.06, back - 1.6], [3.6, 0.06, 2.4], 'concrete'),
+    sbox([0.2, 0.12, back - 1.6], [0.65, 0.32, 1.7], 'woodLight', { r: 0.04 }),
+    sbox([1.2, 0.12, back - 1.6], [0.65, 0.32, 1.7], 'woodLight', { r: 0.04 }),
+    sbox([0.2, 0.44, back - 1.0], [0.62, 0.08, 0.5], 'linen', { r: 0.03 }),
+    sbox([1.2, 0.44, back - 1.0], [0.62, 0.08, 0.5], 'linen', { r: 0.03 }),
+    // Heat pump outdoor unit on its pad, fan facing the yard.
+    sbox([W / 2 - 1.1, 0.02, back - 1.15], [1.25, 0.08, 0.62], 'concrete'),
+    sbox([W / 2 - 1.1, 0.1, back - 1.15], [1.0, 0.82, 0.46], 'heatPump', { r: 0.03, f: 'heat-pump-outdoor' }),
+    { kind: 'cyl', at: [W / 2 - 1.1, 0.51, back - 1.39], r: 0.3, h: 0.02, m: 'grille', axis: 'z', seg: 28, f: 'heat-pump-outdoor' },
+    // Dryer vent hood, outdoor faucet and hose reel on the back wall.
+    sbox([W / 2 - 3.55, 1.08, back - 0.09], [0.28, 0.24, 0.18], 'steel', { f: 'dryer-vent' }),
+    { kind: 'cyl', at: [W / 2 - 5.5, 0.45, back - 0.08], r: 0.04, h: 0.14, m: 'copper', axis: 'z', f: 'hose-bib' },
+    { kind: 'cyl', at: [W / 2 - 5.05, 0.32, back - 0.3], r: 0.26, h: 0.14, m: 'hose', axis: 'z', seg: 24, f: 'hose-bib' },
+    // Tree, shrubs and a light post.
+    { kind: 'cyl', at: [-W / 2 + 0.2, 0, YARD.z0 + 1.3], r: 0.15, h: 2.1, m: 'trunk', seg: 10 },
+    ball(-W / 2 + 0.2, 2.7, YARD.z0 + 1.3, 1.25, 'leaves', { facet: true }),
+    ball(-W / 2 + 0.75, 2.25, YARD.z0 + 1.85, 0.85, 'leavesDark', { facet: true }),
+    ball(-W / 2 - 0.35, 2.35, YARD.z0 + 1.7, 0.8, 'leaves', { facet: true }),
+    ball(W / 2 + 0.2, 0.42, YARD.z0 + 0.8, 0.5, 'leavesDark', { facet: true }),
+    ball(W / 2 - 0.5, 0.36, YARD.z0 + 0.6, 0.42, 'leaves', { facet: true }),
+    ball(W / 2 + 0.55, 0.4, 2.4, 0.48, 'leaves', { facet: true }),
+    ball(W / 2 + 0.5, 0.34, 3.4, 0.4, 'leavesDark', { facet: true }),
     ball(-W / 2 - 0.55, 0.4, -2.6, 0.5, 'leavesDark', { facet: true }),
-    ball(-W / 2 - 0.5, 0.34, -1.6, 0.4, 'leaves', { facet: true }),
-    // Yard light post.
-    cyl(YARD_X0 + 3.6, 0, D / 2 + 0.6, 0.04, 1.0, 'black'),
-    cyl(YARD_X0 + 3.6, 1.0, D / 2 + 0.6, 0.08, 0.16, 'lamp', { seg: 16 }),
+    { kind: 'cyl', at: [W / 2 - 0.3, 0, YARD.z0 + 2.6], r: 0.04, h: 1.0, m: 'black' },
+    { kind: 'cyl', at: [W / 2 - 0.3, 1.0, YARD.z0 + 2.6], r: 0.08, h: 0.16, m: 'lamp', seg: 16 },
     ...fence,
     ...pavers,
   ];
 }
 
-/** Wall lights that glow at night: by the front door and the garage. */
+/** Wall lights that glow at night: by the entry door and either side of the garage. */
 export const SCONCES: readonly (readonly [number, number, number])[] = [
-  [-W / 2 - 0.08, 2.9 + 2.35, 2.05],
-  [-6.05, 2.45, D / 2 + 0.08],
-  [-0.85, 2.45, D / 2 + 0.08],
+  [-W / 2 - 0.08, H + 2.35, 5.08 + 0.75 - D / 2],
+  [W / 2 - 5.75, 2.45, D / 2 + 0.08],
+  [W / 2 - 0.6, 2.45, D / 2 + 0.08],
 ];

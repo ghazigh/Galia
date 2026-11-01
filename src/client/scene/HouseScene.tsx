@@ -13,8 +13,8 @@ import {
   FIXTURE_ANCHORS,
   framingFor,
   LEVELS,
-  room3d,
-  ROOMS,
+  levelZones,
+  zone3d,
   zoneAnchor,
   type SceneView,
 } from './layout';
@@ -225,9 +225,9 @@ export default function HouseScene({
     if (view.kind === 'exterior') {
       const outside: LabelSpec[] = [];
       // Zig-zag left and right up the facade, like the labels around a car in the Tesla app.
-      const facadeU: Record<(typeof LEVELS)[number], number> = { upper: -1.0, ground: 3.6, basement: -4.4 };
+      const facadeU: Record<(typeof LEVELS)[number], number> = { upper: -1.2, ground: 1.9, basement: -2.2 };
       for (const level of LEVELS) {
-        const zones = ROOMS[level].map((room) => summaries[room.zone]).filter((s): s is ZoneSummary => Boolean(s));
+        const zones = levelZones(level).map((zone) => summaries[zone]).filter((s): s is ZoneSummary => Boolean(s));
         const total = zones.reduce(
           (acc, s) => ({ overdue: acc.overdue + s.overdue, today: acc.today + s.today, soon: acc.soon + s.soon, open: acc.open + s.open }),
           { overdue: 0, today: 0, soon: 0, open: 0 },
@@ -259,10 +259,10 @@ export default function HouseScene({
       const due = outside.filter((label) => label.tone === 'overdue' || label.tone === 'today' || label.tone === 'soon');
       out.push(...(due.length ? due : outside));
     } else if (view.kind === 'exploded') {
-      for (const room of LEVELS.flatMap((level) => ROOMS[level])) {
-        const summary = summaries[room.zone];
+      for (const zone of LEVELS.flatMap((level) => levelZones(level))) {
+        const summary = summaries[zone];
         if (summary && (summary.overdue || summary.today || summary.soon)) {
-          const spec = zoneLabelSpec(room.zone, room.zone === selectedZone);
+          const spec = zoneLabelSpec(zone, zone === selectedZone);
           if (spec) out.push(spec);
         }
       }
@@ -275,9 +275,9 @@ export default function HouseScene({
       }
     } else if (view.kind === 'level') {
       // Inside a floor the room labels are the way in, so every one of them gets placed.
-      for (const room of ROOMS[view.level]) {
-        if (selectedZone && room.zone !== selectedZone) continue;
-        const spec = zoneLabelSpec(room.zone, room.zone === selectedZone);
+      for (const zone of levelZones(view.level)) {
+        if (selectedZone && zone !== selectedZone) continue;
+        const spec = zoneLabelSpec(zone, zone === selectedZone);
         if (spec) out.push({ ...spec, priority: spec.priority + 3 });
       }
     } else {
@@ -318,7 +318,7 @@ export default function HouseScene({
   // ── Camera ────────────────────────────────────────────────────────────────────────────────
   const framing = useMemo(() => {
     const base = framingFor(view, selectedZone);
-    const room = selectedZone ? room3d(selectedZone) : null;
+    const room = selectedZone ? zone3d(selectedZone) : null;
     const anchor = highlightFixture ? FIXTURE_ANCHORS[highlightFixture].find((a) => room && a.layer === room.level) : null;
     if (!anchor) return base;
     // Lean the framing toward the fixture the selected task is about, keeping the room in view.
