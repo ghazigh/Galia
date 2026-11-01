@@ -105,7 +105,7 @@ export class Notifier {
         result.skipped += 1;
         continue;
       }
-      const urgent = item.kind === 'safety' || item.kind === 'assignment';
+      const urgent = item.kind === 'safety' || item.kind === 'assignment' || item.kind === 'poke';
       let delivered = false;
       const errors: string[] = [];
       for (const subscription of subscriptions) {

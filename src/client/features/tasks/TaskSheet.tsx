@@ -5,6 +5,7 @@ import type { Task } from '@shared/types';
 import { fixtureDef } from '@shared/zones';
 import {
   AlarmClockOff,
+  ArrowLeft,
   CalendarClock,
   Check,
   Clock3,
@@ -18,6 +19,7 @@ import {
   Phone,
   Repeat,
   ShieldAlert,
+  Sparkles,
   Trash2,
   UserRound,
   Wrench,
@@ -33,6 +35,8 @@ import { DUE_BADGE, PRIORITY_LABEL, RISK_BADGE, RISK_LABEL } from '../../lib/lab
 import { useTaskHistory } from '../../lib/queries';
 import { useDarkMode } from '../../lib/theme';
 import { snoozeOptions, useCompleteWithUndo, useDeleteWithUndo, useSnoozeWithToast } from './actions';
+import { PokeButton } from './PokeButton';
+import { TaskAskComposer, TaskAskMessages, useTaskAsk } from './TaskAsk';
 
 function MetaRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -160,11 +164,16 @@ export function TaskSheet() {
   const [lastTask, setLastTask] = useState<Task | null>(null);
   if (task && task !== lastTask) setLastTask(task);
   const shown = task ?? lastTask;
+  // "Ask" swaps the details for a chat about this task, inside the same sheet.
+  const [askingId, setAskingId] = useState<string | null>(null);
+  const asking = Boolean(shown && askingId === shown.id);
+  const chat = useTaskAsk(shown);
 
   const close = () => {
     const next = new URLSearchParams(params);
     next.delete('task');
     setParams(next, { replace: true });
+    setAskingId(null);
   };
 
   const timing = shown ? taskTiming(shown, today) : null;
@@ -180,12 +189,22 @@ export function TaskSheet() {
       label={shown?.title ?? 'Task'}
       tall
       title={
-        <span className="flex items-center gap-2 text-[15px] font-semibold text-ink-3">
-          {shown?.kind === 'maintenance' ? 'Maintenance' : shown?.visibility === 'personal' ? 'Personal to-do' : 'Household to-do'}
-        </span>
+        asking ? (
+          <span className="flex items-center gap-1">
+            <IconButton label="Back to the task" onClick={() => setAskingId(null)} className="-ml-2">
+              <ArrowLeft className="size-5" />
+            </IconButton>
+            <span className="truncate text-[17px]">Ask the expert</span>
+          </span>
+        ) : (
+          <span className="flex items-center gap-2 text-[15px] font-semibold text-ink-3">
+            {shown?.kind === 'maintenance' ? 'Maintenance' : shown?.visibility === 'personal' ? 'Personal to-do' : 'Household to-do'}
+          </span>
+        )
       }
       headerAction={
-        shown && (
+        shown &&
+        !asking && (
           <Menu
             align="right"
             trigger={(props) => (
@@ -222,7 +241,9 @@ export function TaskSheet() {
         )
       }
       footer={
-        shown && (
+        shown && asking ? (
+          bootstrap.ai.enabled && <TaskAskComposer chat={chat} />
+        ) : shown ? (
           <div className="flex gap-2">
             {!done && (
               <Menu
@@ -252,10 +273,11 @@ export function TaskSheet() {
               {done ? 'Completed' : shown.recurrence ? 'Mark done' : 'Done'}
             </Button>
           </div>
-        )
+        ) : null
       }
     >
-      {shown && timing && (
+      {shown && asking && <TaskAskMessages task={shown} chat={chat} />}
+      {shown && timing && !asking && (
         <div className="pb-4">
           {shown.zoneId && (
             <div className="-mx-1 mb-4 h-44 overflow-hidden rounded-3xl bg-canvas">
@@ -288,6 +310,13 @@ export function TaskSheet() {
                 Pro job
               </Badge>
             )}
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="soft" size="sm" icon={<Sparkles className="size-4" />} onClick={() => setAskingId(shown.id)}>
+              Ask
+            </Button>
+            <PokeButton task={shown} />
           </div>
 
           <div className="mt-4 divide-y divide-line/70 rounded-2xl border border-line/70 px-3">

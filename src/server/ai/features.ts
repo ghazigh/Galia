@@ -1,9 +1,21 @@
 import { addDays, isYmd, WEEKDAY_SHORT, weekday, type Ymd } from '@shared/dates';
+import { dueSentence } from '@shared/format';
+import { describeRecurrence } from '@shared/recurrence';
 import { taskCreateSchema, type TaskCreateInput } from '@shared/schemas';
-import { PRIORITIES, RISKS, type Household, type Priority, type Risk, type ZoneId } from '@shared/types';
-import { ZONE_IDS, ZONES, zoneName } from '@shared/zones';
+import { taskTiming } from '@shared/status';
+import {
+  PRIORITIES,
+  RISKS,
+  type Completion,
+  type Household,
+  type Priority,
+  type Risk,
+  type Task,
+  type ZoneId,
+} from '@shared/types';
+import { fixtureDef, ZONE_IDS, ZONES, zoneName } from '@shared/zones';
 import { z } from 'zod';
-import type { AiProvider } from './types';
+import type { AiProvider, ChatTurn } from './types';
 
 const zoneEnum = z.enum(ZONE_IDS as [ZoneId, ...ZoneId[]]);
 const priorityEnum = z.enum(PRIORITIES as [Priority, ...Priority[]]);
@@ -161,4 +173,84 @@ Resolve relative dates to YYYY-MM-DD ("tomorrow", "Friday" = the coming Friday, 
     contact: parsed.contact?.trim().slice(0, 300) || null,
     recurrence,
   });
+}
+
+// ── Ask about a task ("what filter size do I need?") ───────────────────────────────────────
+
+const answerSchema = z.object({
+  answer: z.string().describe('The reply, in plain text. Short paragraphs; "- " at the start of a line for list items.'),
+});
+
+export interface AskContext {
+  household: Household;
+  task: Task;
+  today: Ymd;
+  askerName: string;
+  memberName: (id: string | null) => string | null;
+  completions: Pick<Completion, 'completedOn' | 'userId' | 'note'>[];
+}
+
+/** Everything the app knows about a task, as plain text for the model. */
+export function describeTaskForAi(input: AskContext): string {
+  const { task, today, household, memberName } = input;
+  const timing = taskTiming(task, today);
+  const lines = [
+    `Title: ${task.title}`,
+    `Type: ${task.kind === 'maintenance' ? 'home maintenance' : 'to-do'}${task.visibility === 'personal' ? ' (private)' : ' (shared with the household)'}`,
+    task.zoneId && `Where: ${zoneName(task.zoneId, household)}`,
+    task.fixtureId && `Fixture: ${fixtureDef(task.fixtureId).name}`,
+    `Status: ${task.completedAt ? `done on ${task.completedAt.slice(0, 10)}` : dueSentence(timing, today)}`,
+    task.dueDate && `Due date: ${task.dueDate}`,
+    task.snoozedUntil && `Snoozed until: ${task.snoozedUntil}`,
+    task.recurrence && `Repeats: ${describeRecurrence(task.recurrence)} (the clock restarts when it is done)`,
+    `Priority: ${task.priority}`,
+    task.risks.length > 0 && `Risks if forgotten: ${task.risks.join(', ')}`,
+    task.estimateMinutes && `Time estimate: ${task.estimateMinutes} minutes`,
+    task.quickWin && 'Quick win: yes',
+    task.contact && `Contact: ${task.contact}`,
+    `Assigned to: ${memberName(task.assigneeId) ?? 'nobody in particular'}`,
+    task.assignedById && `Assigned by: ${memberName(task.assignedById)}`,
+    task.lastCompletedAt && `Last done: ${task.lastCompletedAt.slice(0, 10)} by ${memberName(task.lastCompletedById) ?? 'someone'}`,
+    task.notes.trim() && `Notes:\n${task.notes.trim()}`,
+  ];
+  if (task.guide) {
+    lines.push(`Why it matters: ${task.guide.why}`);
+    if (task.guide.steps.length) lines.push(`Steps:\n${task.guide.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`);
+    if (task.guide.supplies?.length) lines.push(`Supplies: ${task.guide.supplies.join(', ')}`);
+    if (task.guide.safety) lines.push(`Safety: ${task.guide.safety}`);
+    if (task.guide.pro) lines.push('Usually done by a professional.');
+  }
+  if (input.completions.length) {
+    lines.push(
+      `Recent completions:\n${input.completions
+        .map((c) => `- ${c.completedOn} by ${memberName(c.userId) ?? 'someone'}${c.note ? ` — "${c.note}"` : ''}`)
+        .join('\n')}`,
+    );
+  }
+  return lines.filter(Boolean).join('\n');
+}
+
+export async function askAboutTask(
+  ai: AiProvider,
+  input: AskContext & { question: string; history: ChatTurn[] },
+): Promise<string> {
+  const system = `You are a friendly, practical home expert inside a household app. ${input.askerName} is asking about one of their tasks. Answer their questions about it: how to do it, what to buy, how long it takes, whether it is safe to do themselves, what happens if it waits, and anything else that helps get it done.
+
+${HOUSE_PROFILE}
+Time zone: ${input.household.timeZone} — infer the climate from it. Today is ${input.today}.
+
+The task:
+${describeTaskForAi(input)}
+
+Keep answers short and concrete (a few sentences or a short list), suited to reading on a phone. Give measurements in both metric and imperial units. When something involves gas, electrical panels, refrigerant or work at height beyond a step ladder, say when to call a professional. If you are unsure of a detail specific to their equipment (a model number, a filter size), say how to find it rather than guessing.`;
+
+  const result = await ai.generate({
+    system,
+    history: input.history,
+    user: input.question,
+    schema: answerSchema,
+    schemaName: 'task_answer',
+    effort: 'medium',
+  });
+  return result.answer.trim().slice(0, 8000);
 }

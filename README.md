@@ -40,7 +40,10 @@ radon…) and a 4-item new-home checklist (find the water main, rekey locks, lab
 - **Focus** ranks everything you could do now and explains why ("3 days overdue · Fire safety ·
   From Sam"), with **I have 5 / 15 / 30 min / 1 hour** filters and a quick-wins strip. Quick wins
   with a phone number get a one-tap **Call** button (dentist, Costco tires, car service).
-- Optimistic updates with Undo on complete and delete.
+- **Ask** on any task opens a chat with the AI expert, who sees all of the task's details (due date,
+  steps, notes, history) — "what filter size do I buy?", "can I do this myself?".
+- **Poke** sends the other person a push to have a look at a task (once per task every 10 minutes).
+- Swipe a task left to reveal **Delete**. Optimistic updates with Undo on complete and delete.
 
 **Reminders (Web Push)** — on iPhone, once the app is added to the Home Screen (iOS 16.4+):
 
@@ -116,10 +119,12 @@ to roll back, copy an older version of `household.db` over the live object
 
 ## AI on Azure (optional)
 
-Two AI features use an LLM hosted on Azure; everything else works without them:
+Three AI features use an LLM hosted on Azure; everything else works without them:
 
 - **Ask the house expert** (Tasks → Maintenance → Expert plan): suggests maintenance for something new
   in the house, with steps and a sensible interval, ready to add to the plan.
+- **Ask** on any task: a chat about that task, with all its details sent along with each question.
+  The conversation stays on the device and isn't stored on the server.
 - **Fill with AI** in the new-task sheet: "remind me to call the dentist next week" → title, date,
   quick-win flag, estimate, private/shared, assignee, phone number.
 

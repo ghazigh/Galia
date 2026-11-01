@@ -3,7 +3,7 @@ import { isActionable, rankTasks, scoreTask } from './priority';
 import { canView, isMine, taskTiming } from './status';
 import type { NotificationPrefs, Task } from './types';
 
-export type NotificationKind = 'digest' | 'safety' | 'quick-wins' | 'assignment' | 'test';
+export type NotificationKind = 'digest' | 'safety' | 'quick-wins' | 'assignment' | 'poke' | 'test';
 
 export interface PlannedNotification {
   userId: string;
@@ -225,5 +225,31 @@ export function planAssignment(input: {
     url: `/task/${task.id}`,
     tag: `assign-${task.id}`,
     deliverAfter: deliverAfterQuietHours(now, timeZone, assignee.prefs).toISOString(),
+  };
+}
+
+/** Minutes during which a second poke about the same task to the same person is refused. */
+export const POKE_COOLDOWN_MINUTES = 10;
+
+/** Push sent when someone pokes a household member to have a look at a task. */
+export function planPoke(input: {
+  task: Pick<Task, 'id' | 'title'>;
+  target: PlannerUser;
+  pokerName: string;
+  now: Date;
+  timeZone: string;
+}): PlannedNotification {
+  const { task, target, pokerName, now, timeZone } = input;
+  const bucket = Math.floor(now.getTime() / (POKE_COOLDOWN_MINUTES * 60_000));
+  return {
+    userId: target.id,
+    // One poke per task, person and cooldown window: the outbox ignores a repeated key.
+    key: `poke:${task.id}:${target.id}:${bucket}`,
+    kind: 'poke',
+    title: `👉 ${pokerName} poked you`,
+    body: `Have a look at “${task.title}”`,
+    url: `/task/${task.id}`,
+    tag: `poke-${task.id}`,
+    deliverAfter: deliverAfterQuietHours(now, timeZone, target.prefs).toISOString(),
   };
 }

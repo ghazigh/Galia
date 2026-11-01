@@ -48,6 +48,7 @@ export function createAzureOpenAiProvider(options: AzureOpenAiOptions): AiProvid
           body: JSON.stringify({
             messages: [
               { role: 'system', content: request.system },
+              ...(request.history ?? []),
               { role: 'user', content: request.user },
             ],
             response_format: {

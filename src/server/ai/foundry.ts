@@ -59,7 +59,7 @@ export function createFoundryProvider(options: FoundryOptions): AiProvider {
           model: options.model,
           max_tokens: 16000,
           system: request.system,
-          messages: [{ role: 'user', content: request.user }],
+          messages: [...(request.history ?? []), { role: 'user', content: request.user }],
           output_config: { effort: request.effort, format: betaZodOutputFormat(request.schema) },
         });
         if (message.stop_reason === 'refusal') {

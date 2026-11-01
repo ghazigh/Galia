@@ -140,3 +140,64 @@ test('private to-dos stay private', async ({ browser }) => {
   await page.goto('/tasks?list=mine');
   await expect(page.getByText('Plan the surprise party')).toBeVisible();
 });
+
+test('poking the partner about a task', async () => {
+  const page = ownerPage;
+  await page.goto('/tasks?list=household');
+  await page.locator('[data-task-id]').filter({ hasText: 'Pick up the dry cleaning' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Pick up the dry cleaning' });
+  await sheet.getByRole('button', { name: 'Poke Sam' }).click();
+  // Sam has not turned on notifications in this browser, and the app says so.
+  await expect(page.getByText(/Poked Sam, but they haven't turned on notifications/)).toBeVisible();
+  await sheet.getByRole('button', { name: 'Poke Sam' }).click();
+  await expect(page.getByText(/You already poked Sam about this/)).toBeVisible();
+  await sheet.getByRole('button', { name: 'Close' }).click();
+});
+
+test('asking the expert about a task', async () => {
+  const page = ownerPage;
+  // The suite runs without an AI provider; stand one in at the network edge.
+  await page.route('**/api/session', async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    body.bootstrap.ai = { enabled: true, provider: 'Test' };
+    await route.fulfill({ response, json: body });
+  });
+  const questions: { question: string; history: unknown[] }[] = [];
+  await page.route('**/api/tasks/*/ask', async (route) => {
+    questions.push(route.request().postDataJSON());
+    await route.fulfill({ json: { answer: 'Turn off the dishwasher first.\n- Twist the filter out\n- Rinse it in warm water' } });
+  });
+  await page.goto('/tasks?list=maintenance');
+  await page.locator('[data-task-id]').filter({ hasText: 'Clean the dishwasher filter' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Clean the dishwasher filter' });
+  await sheet.getByRole('button', { name: 'Ask', exact: true }).click();
+  await sheet.getByRole('button', { name: 'How do I do this?' }).click();
+  await expect(sheet.getByText('Rinse it in warm water')).toBeVisible();
+  await sheet.getByLabel('Your question').fill('Do I need soap?');
+  await sheet.getByRole('button', { name: 'Send' }).click();
+  await expect.poll(() => questions.length).toBe(2);
+  expect(questions[1]).toMatchObject({ question: 'Do I need soap?', history: [{ role: 'user' }, { role: 'assistant' }] });
+  await sheet.getByRole('button', { name: 'Back to the task' }).click();
+  await expect(sheet.getByText('Why it matters')).toBeVisible();
+  await sheet.getByRole('button', { name: 'Close' }).click();
+  await page.unrouteAll();
+});
+
+test('swiping a task left reveals Delete', async () => {
+  const page = ownerPage;
+  await page.goto('/tasks?list=mine');
+  const row = page.locator('[data-task-id]').filter({ hasText: 'Plan the surprise party' });
+  const box = (await row.boundingBox())!;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width - 40, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width - 100, y, { steps: 6 });
+  await page.mouse.move(box.x + box.width - 160, y, { steps: 6 });
+  await page.mouse.up();
+  await row.getByText('Delete', { exact: true }).click();
+  await expect(page.getByText('Deleted “Plan the surprise party”')).toBeVisible();
+  await expect(row).toHaveCount(0);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('[data-task-id]').filter({ hasText: 'Plan the surprise party' })).toBeVisible();
+});
