@@ -235,7 +235,6 @@ export const FIXTURE_ANCHORS: Record<FixtureId, FixtureAnchor[]> = {
   windows: [
     { level: 'upper', point: [T, 2.35, 1.85] },
     { level: 'ground', point: [T, 2.5, 1.85] },
-    { level: 'basement', point: [T, 0.75, 1.7] },
   ],
 };
 

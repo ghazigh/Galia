@@ -105,8 +105,7 @@ export function sideWallArt(level: LevelKey, p: P): ReactNode {
     case 'basement':
       return (
         <g>
-          <WindowPane p={p} u0={0.35} u1={1.15} v0={1.6} v1={2.2} />
-          {/* dryer exhaust duct out through the wall */}
+          {/* dryer exhaust duct out through the wall (the backyard outside is level with the ground floor) */}
           <rect x={3.45} y={0.9} width={0.22} height={1.4} fill={p.tint(C.duct)} />
           {Array.from({ length: 6 }, (_, i) => (
             <rect key={i} x={3.45} y={1.0 + i * 0.2} width={0.22} height={0.03} fill={p.tint(shade(C.duct, -0.15))} />
@@ -125,7 +124,9 @@ export function sideWallArt(level: LevelKey, p: P): ReactNode {
     case 'ground':
       return (
         <g>
-          <WindowPane p={p} u0={1.3} u1={3.65} v0={0.75} v1={2.3} mullions={2} />
+          {/* porte-fenêtre out to the backyard */}
+          <WindowPane p={p} u0={1.3} u1={3.65} v0={0.07} v1={2.25} mullions={1} />
+          <rect x={2.4} y={0.95} width={0.04} height={0.25} fill={p.tint('#5e6673')} />
           <ArtFrame p={p} u0={4.9} v0={1.2} w={0.7} h={0.85} color="#94b5a0" />
         </g>
       );
@@ -471,28 +472,30 @@ export function partFurniture(id: string, p: P): ReactNode {
     case 'living':
       return (
         <g>
-          <FloorRect x0={0.25} y0={0.8} x1={2.85} y1={3.2} fill={p.tint(C.rug)} />
-          <FloorRect x0={0.42} y0={0.98} x1={2.68} y1={3.02} fill={p.tint(shade(C.rug, 0.18))} />
-          {/* sofa under the back window, facing the room */}
-          <Box at={[0.2, 0.8, 0]} size={[0.9, 0.22, 0.62]} color={p.tint(C.sofa)} shadow={shadow} />
-          <Box at={[0.2, 1.02, 0]} size={[0.9, 1.96, 0.42]} color={p.tint(C.sofa)} shadow={shadow} />
-          <Box at={[0.2, 1.02, 0.42]} size={[0.24, 1.96, 0.45]} color={p.tint(C.sofa)} />
-          <Box at={[0.44, 1.04, 0.42]} size={[0.64, 0.96, 0.1]} color={p.tint(C.cushion)} />
-          <Box at={[0.44, 2.02, 0.42]} size={[0.64, 0.94, 0.1]} color={p.tint(C.cushion)} />
-          <Box at={[0.46, 1.18, 0.52]} size={[0.13, 0.42, 0.3]} color={p.tint(C.terracotta)} />
-          <Box at={[0.46, 2.4, 0.52]} size={[0.13, 0.42, 0.3]} color={p.tint(C.sage)} />
-          <Box at={[0.2, 2.98, 0]} size={[0.9, 0.22, 0.62]} color={p.tint(C.sofa)} />
+          <FloorRect x0={0.6} y0={0.9} x1={2.8} y1={3.1} fill={p.tint(C.rug)} />
+          <FloorRect x0={0.77} y0={1.07} x1={2.63} y1={2.93} fill={p.tint(shade(C.rug, 0.18))} />
+          {/* floor lamp and sofa along the party wall, facing the room; the patio door stays clear */}
+          <Cylinder at={[0.3, 0.32, 0]} r={0.025} h={1.35} color={p.tint('#1b1c1f')} />
+          <Cylinder at={[0.3, 0.32, 1.35]} r={0.18} h={0.26} color={p.tint('#f3eadb')} />
+          <Box at={[0.55, 0.15, 0]} size={[0.22, 0.9, 0.62]} color={p.tint(C.sofa)} shadow={shadow} />
+          <Box at={[0.77, 0.15, 0]} size={[1.66, 0.9, 0.42]} color={p.tint(C.sofa)} shadow={shadow} />
+          <Box at={[0.77, 0.15, 0.42]} size={[1.66, 0.24, 0.45]} color={p.tint(C.sofa)} />
+          <Box at={[0.79, 0.41, 0.42]} size={[0.8, 0.62, 0.1]} color={p.tint(C.cushion)} />
+          <Box at={[1.62, 0.41, 0.42]} size={[0.79, 0.62, 0.1]} color={p.tint(C.cushion)} />
+          <Box at={[0.95, 0.42, 0.52]} size={[0.42, 0.13, 0.3]} color={p.tint(C.terracotta)} />
+          <Box at={[1.95, 0.42, 0.52]} size={[0.42, 0.13, 0.3]} color={p.tint(C.sage)} />
+          <Box at={[2.43, 0.15, 0]} size={[0.22, 0.9, 0.62]} color={p.tint(C.sofa)} />
           {/* coffee table */}
-          <Box at={[1.55, 1.55, 0]} size={[0.5, 0.96, 0.3]} color={p.tint(C.woodDark)} shadow={shadow} />
-          <Box at={[1.45, 1.43, 0.3]} size={[0.7, 1.2, 0.06]} color={p.tint(C.wood)} />
-          <Box at={[1.58, 1.62, 0.36]} size={[0.26, 0.36, 0.05]} color={p.tint(C.terracotta)} />
-          <Cylinder at={[1.82, 2.3, 0.36]} r={0.05} h={0.09} color={p.tint('#ffffff')} />
-          {/* armchair + side table with the radon monitor */}
-          <Box at={[2.2, 0.3, 0]} size={[0.75, 0.75, 0.4]} color={p.tint(C.cushion)} shadow={shadow} />
-          <Box at={[2.2, 0.3, 0.4]} size={[0.75, 0.16, 0.4]} color={p.tint(C.cushion)} />
-          <Box at={[0.25, 0.25, 0]} size={[0.4, 0.4, 0.5]} color={p.tint(C.wood)} shadow={shadow} />
-          <Box at={[0.33, 0.33, 0.5]} size={[0.16, 0.12, 0.1]} color={p.tint('#ffffff')} />
-          <Plant p={p} x={2.75} y={3.75} size={1.15} />
+          <Box at={[1.3, 1.45, 0]} size={[0.96, 0.5, 0.3]} color={p.tint(C.woodDark)} shadow={shadow} />
+          <Box at={[1.18, 1.35, 0.3]} size={[1.2, 0.7, 0.06]} color={p.tint(C.wood)} />
+          <Box at={[1.4, 1.48, 0.36]} size={[0.36, 0.26, 0.05]} color={p.tint(C.terracotta)} />
+          <Cylinder at={[1.95, 1.75, 0.36]} r={0.05} h={0.09} color={p.tint('#ffffff')} />
+          {/* armchair facing the sofa + side table with the radon monitor */}
+          <Box at={[1.95, 3.0, 0]} size={[0.75, 0.75, 0.4]} color={p.tint(C.cushion)} shadow={shadow} />
+          <Box at={[1.95, 3.59, 0.4]} size={[0.75, 0.16, 0.4]} color={p.tint(C.cushion)} />
+          <Box at={[2.8, 3.3, 0]} size={[0.4, 0.4, 0.5]} color={p.tint(C.wood)} shadow={shadow} />
+          <Box at={[2.88, 3.38, 0.5]} size={[0.16, 0.12, 0.1]} color={p.tint('#ffffff')} />
+          <Plant p={p} x={0.35} y={3.85} size={1.1} />
         </g>
       );
     case 'dining':

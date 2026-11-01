@@ -90,14 +90,21 @@ export function Lights({
   useEffect(() => {
     const m = shellMaterials();
     const fill: [typeof m.exterior, number][] = [
-      [m.exterior, 0.5],
+      [m.cladding.brickDark, 0.5],
+      [m.cladding.brickLight, 0.34],
+      [m.cladding.siding, 0.3],
+      [m.cladding.foundation, 0.3],
       [m.roof, 0.42],
       [m.trim, 0.3],
+      [m.soffit, 0.3],
       [m.garage, 0.4],
       [m.ground, 0.32],
+      [m.terrain, 0.3],
       [m.drive, 0.28],
-      [m.grass, 0.26],
-      [m.grassStripe, 0.26],
+      [m.street, 0.28],
+      [m.concrete, 0.24],
+      [m.paver, 0.24],
+      [m.stone, 0.24],
     ];
     for (const [material, strength] of fill) {
       material.emissive.copy(MOONLIT);
@@ -118,13 +125,13 @@ export function Lights({
       />
       <hemisphereLight ref={hemi} />
       {quality !== 'saver' &&
-        SCONCES.map(([x, y, z], i) => (
+        SCONCES.map(({ at: [x, y, z], normal: [nx, nz] }, i) => (
           <pointLight
             key={i}
             ref={(light) => {
               sconces.current[i] = light;
             }}
-            position={[x + (i === 0 ? -0.35 : 0), y - 0.2, z + (i === 0 ? 0 : 0.35)]}
+            position={[x + nx * 0.35, y - 0.2, z + nz * 0.35]}
             color="#ffc98a"
             intensity={0}
             distance={7}

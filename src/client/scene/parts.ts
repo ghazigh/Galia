@@ -1,5 +1,5 @@
 import type { FixtureId } from '@shared/types';
-import { D, H, W, WALL, YARD } from './layout';
+import { ALCOVE, BAY, CORNER, D, GRADE, H, HEAT_PUMP_UNIT, HOSE_BIB_Z, W, WALL } from './layout';
 
 // Furniture and fixtures as data. Room parts use floor-plan coordinates — the same numbers as the
 // illustrated house (src/client/house/furniture.tsx): x from the back of the house to the front,
@@ -50,7 +50,12 @@ export type MaterialKey =
   | 'fence'
   | 'paver'
   | 'grille'
-  | 'hose';
+  | 'hose'
+  | 'spruce'
+  | 'cedar'
+  | 'tuft'
+  | 'shrubGold'
+  | 'planter';
 
 export interface BoxPart {
   kind: 'box';
@@ -236,20 +241,25 @@ const ROOM_PARTS: Record<string, Part[]> = {
 
   // Ground floor
   living: [
-    rug(0.25, 0.8, 2.85, 3.2),
-    box([0.2, 0.8, 0], [0.9, 0.22, 0.62], 'sofa', { r: 0.08 }),
-    box([0.2, 1.02, 0], [0.9, 1.96, 0.42], 'sofa', { r: 0.08 }),
-    box([0.2, 1.02, 0.36], [0.26, 1.96, 0.5], 'sofa', { r: 0.1 }),
-    box([0.46, 1.04, 0.4], [0.62, 0.96, 0.12], 'cushion', { r: 0.05 }),
-    box([0.46, 2.02, 0.4], [0.62, 0.94, 0.12], 'cushion', { r: 0.05 }),
-    box([0.2, 2.98, 0], [0.9, 0.22, 0.62], 'sofa', { r: 0.08 }),
-    box([1.55, 1.55, 0], [0.5, 0.96, 0.3], 'woodDark'),
-    box([1.45, 1.43, 0.3], [0.7, 1.2, 0.06], 'wood'),
-    box([1.58, 1.62, 0.36], [0.26, 0.36, 0.05], 'terracotta'),
-    box([2.2, 0.3, 0], [0.75, 0.75, 0.42], 'cushion', { r: 0.1 }),
-    box([2.2, 0.3, 0.36], [0.75, 0.18, 0.46], 'cushion', { r: 0.06 }),
-    box([0.25, 0.25, 0], [0.4, 0.4, 0.5], 'wood'),
-    ...plant(2.75, 3.75, 1.15),
+    // Sofa along the party wall, facing the room; the porte-fenêtre to the backyard stays clear.
+    rug(0.6, 0.9, 2.8, 3.1),
+    cyl(0.3, 0.32, 0, 0.025, 1.35, 'black'),
+    cyl(0.3, 0.32, 1.35, 0.18, 0.26, 'lamp', { seg: 20 }),
+    box([0.55, 0.15, 0], [0.22, 0.9, 0.62], 'sofa', { r: 0.08 }),
+    box([0.77, 0.15, 0], [1.66, 0.9, 0.42], 'sofa', { r: 0.08 }),
+    box([0.77, 0.15, 0.36], [1.66, 0.26, 0.5], 'sofa', { r: 0.1 }),
+    box([0.79, 0.41, 0.4], [0.8, 0.62, 0.12], 'cushion', { r: 0.05 }),
+    box([1.62, 0.41, 0.4], [0.79, 0.62, 0.12], 'cushion', { r: 0.05 }),
+    box([2.43, 0.15, 0], [0.22, 0.9, 0.62], 'sofa', { r: 0.08 }),
+    box([1.3, 1.45, 0], [0.96, 0.5, 0.3], 'woodDark'),
+    box([1.18, 1.35, 0.3], [1.2, 0.7, 0.06], 'wood'),
+    box([1.4, 1.48, 0.36], [0.36, 0.26, 0.05], 'terracotta'),
+    // Armchair facing the sofa, with the side table (radon monitor) beside it.
+    box([1.95, 3.0, 0], [0.75, 0.75, 0.42], 'cushion', { r: 0.1 }),
+    box([1.95, 3.57, 0.36], [0.75, 0.18, 0.46], 'cushion', { r: 0.06 }),
+    box([2.8, 3.3, 0], [0.4, 0.4, 0.5], 'wood'),
+    box([2.88, 3.38, 0.5], [0.16, 0.12, 0.1], 'porcelain'),
+    ...plant(0.35, 3.85, 1.1),
   ],
   dining: [
     box([3.75, 1.6, 0.7], [1.8, 0.95, 0.06], 'wood', { r: 0.02 }),
@@ -354,7 +364,7 @@ export function rectParts(id: string): Part[] {
 
 // ── Outside (scene coordinates) ──────────────────────────────────────────────────────────────
 
-/** Site parts in scene space: x across the house, z toward the street, y up. */
+/** Site parts in scene space: x along the entry facade, z toward the street, y up. */
 export interface SitePartBox {
   kind: 'box';
   /** Center of the base. */
@@ -375,63 +385,37 @@ const sbox = (at: readonly [number, number, number], s: readonly [number, number
   ...extra,
 });
 
+/** Backyard furniture and equipment (the yard is level, at GRADE.back). */
 export function siteParts(): SitePart[] {
-  const back = -D / 2;
-  const fence: SitePart[] = [];
-  const width = YARD.x1 - YARD.x0;
-  const depth = YARD.z1 - YARD.z0;
-  for (let i = 0; i < 4; i += 1) {
-    const y = 0.18 + i * 0.24;
-    fence.push(sbox([(YARD.x0 + YARD.x1) / 2, y, YARD.z0], [width + 0.05, 0.15, 0.05], 'fence'));
-    fence.push(sbox([YARD.x0, y, (YARD.z0 + YARD.z1) / 2], [0.05, 0.15, depth], 'fence'));
-    fence.push(sbox([YARD.x1, y, (YARD.z0 + YARD.z1) / 2], [0.05, 0.15, depth], 'fence'));
-  }
-  for (let i = 0; i <= 5; i += 1) fence.push(sbox([YARD.x0 + (width / 5) * i, 0, YARD.z0], [0.08, 1.12, 0.08], 'black'));
-  for (let i = 0; i <= 4; i += 1) {
-    fence.push(sbox([YARD.x0, 0, YARD.z0 + (depth / 4) * i], [0.08, 1.12, 0.08], 'black'));
-    fence.push(sbox([YARD.x1, 0, YARD.z0 + (depth / 4) * i], [0.08, 1.12, 0.08], 'black'));
-  }
-  const pavers: SitePart[] = [];
-  for (let i = 0; i < 4; i += 1) pavers.push(sbox([-W / 2 - 0.75 + (i % 2) * 0.12, 0, 4.6 + i * 0.75], [0.9, 0.04, 0.55], 'paver'));
-  for (let i = 0; i < 5; i += 1) {
-    pavers.push({ kind: 'cyl', at: [-W / 2 + 0.2 - (i % 2) * 0.3, 0.06, back - 3.0 - i * 0.6], r: 0.27, h: 0.03, m: 'paver', seg: 20 });
-  }
-
+  const y = GRADE.back;
+  const patio = y + 0.08;
+  const unit = HEAT_PUMP_UNIT;
   return [
-    // Patio off the back of the house, with two lounge chairs.
-    sbox([0.9, 0.06, back - 1.6], [3.6, 0.06, 2.4], 'concrete'),
-    sbox([0.2, 0.12, back - 1.6], [0.65, 0.32, 1.7], 'woodLight', { r: 0.04 }),
-    sbox([1.2, 0.12, back - 1.6], [0.65, 0.32, 1.7], 'woodLight', { r: 0.04 }),
-    sbox([0.2, 0.44, back - 1.0], [0.62, 0.08, 0.5], 'linen', { r: 0.03 }),
-    sbox([1.2, 0.44, back - 1.0], [0.62, 0.08, 0.5], 'linen', { r: 0.03 }),
+    // Two lounge chairs and a side table on the patio off the living room.
+    sbox([-W / 2 - 2.15, patio, -1.55], [1.7, 0.3, 0.65], 'woodLight', { r: 0.04 }),
+    sbox([-W / 2 - 2.15, patio, -0.55], [1.7, 0.3, 0.65], 'woodLight', { r: 0.04 }),
+    sbox([-W / 2 - 2.75, patio + 0.3, -1.55], [0.5, 0.08, 0.62], 'linen', { r: 0.03 }),
+    sbox([-W / 2 - 2.75, patio + 0.3, -0.55], [0.5, 0.08, 0.62], 'linen', { r: 0.03 }),
+    { kind: 'cyl', at: [-W / 2 - 2.0, patio, 0.3], r: 0.24, h: 0.45, m: 'woodDark', seg: 20 },
     // Heat pump outdoor unit on its pad, fan facing the yard.
-    sbox([W / 2 - 1.1, 0.02, back - 1.15], [1.25, 0.08, 0.62], 'concrete'),
-    sbox([W / 2 - 1.1, 0.1, back - 1.15], [1.0, 0.82, 0.46], 'heatPump', { r: 0.03, f: 'heat-pump-outdoor' }),
-    { kind: 'cyl', at: [W / 2 - 1.1, 0.51, back - 1.39], r: 0.3, h: 0.02, m: 'grille', axis: 'z', seg: 28, f: 'heat-pump-outdoor' },
-    // Dryer vent hood, outdoor faucet and hose reel on the back wall.
-    sbox([W / 2 - 3.55, 1.08, back - 0.09], [0.28, 0.24, 0.18], 'steel', { f: 'dryer-vent' }),
-    { kind: 'cyl', at: [W / 2 - 5.5, 0.45, back - 0.08], r: 0.04, h: 0.14, m: 'copper', axis: 'z', f: 'hose-bib' },
-    { kind: 'cyl', at: [W / 2 - 5.05, 0.32, back - 0.3], r: 0.26, h: 0.14, m: 'hose', axis: 'z', seg: 24, f: 'hose-bib' },
-    // Tree, shrubs and a light post.
-    { kind: 'cyl', at: [-W / 2 + 0.2, 0, YARD.z0 + 1.3], r: 0.15, h: 2.1, m: 'trunk', seg: 10 },
-    ball(-W / 2 + 0.2, 2.7, YARD.z0 + 1.3, 1.25, 'leaves', { facet: true }),
-    ball(-W / 2 + 0.75, 2.25, YARD.z0 + 1.85, 0.85, 'leavesDark', { facet: true }),
-    ball(-W / 2 - 0.35, 2.35, YARD.z0 + 1.7, 0.8, 'leaves', { facet: true }),
-    ball(W / 2 + 0.2, 0.42, YARD.z0 + 0.8, 0.5, 'leavesDark', { facet: true }),
-    ball(W / 2 - 0.5, 0.36, YARD.z0 + 0.6, 0.42, 'leaves', { facet: true }),
-    ball(W / 2 + 0.55, 0.4, 2.4, 0.48, 'leaves', { facet: true }),
-    ball(W / 2 + 0.5, 0.34, 3.4, 0.4, 'leavesDark', { facet: true }),
-    ball(-W / 2 - 0.55, 0.4, -2.6, 0.5, 'leavesDark', { facet: true }),
-    { kind: 'cyl', at: [W / 2 - 0.3, 0, YARD.z0 + 2.6], r: 0.04, h: 1.0, m: 'black' },
-    { kind: 'cyl', at: [W / 2 - 0.3, 1.0, YARD.z0 + 2.6], r: 0.08, h: 0.16, m: 'lamp', seg: 16 },
-    ...fence,
-    ...pavers,
+    sbox([unit.x, y, unit.z], [0.62, 0.1, 1.25], 'concrete'),
+    sbox([unit.x, y + 0.1, unit.z], [0.46, 0.82, 1.0], 'heatPump', { r: 0.03, f: 'heat-pump-outdoor' }),
+    { kind: 'cyl', at: [unit.x - 0.24, y + 0.51, unit.z], r: 0.3, h: 0.02, m: 'grille', axis: 'x', seg: 28, f: 'heat-pump-outdoor' },
+    // Hose reel under the faucet.
+    { kind: 'cyl', at: [-W / 2 - 0.35, y + 0.3, HOSE_BIB_Z - 0.45], r: 0.26, h: 0.14, m: 'hose', axis: 'x', seg: 24, f: 'hose-bib' },
   ];
 }
 
-/** Wall lights that glow at night: by the entry door and either side of the garage. */
-export const SCONCES: readonly (readonly [number, number, number])[] = [
-  [-W / 2 - 0.08, H + 2.35, 5.08 + 0.75 - D / 2],
-  [W / 2 - 5.75, 2.45, D / 2 + 0.08],
-  [W / 2 - 0.6, 2.45, D / 2 + 0.08],
+export interface Sconce {
+  at: readonly [number, number, number];
+  /** Outward direction of the wall it hangs on (x, z). */
+  normal: readonly [number, number];
+}
+
+/** Outdoor lights that glow at night: entry alcove, floodlight, garage corner, patio door. */
+export const SCONCES: readonly Sconce[] = [
+  { at: [ALCOVE.x0 + 1.05, H + 2.02, D / 2 + 0.06], normal: [0, 1] },
+  { at: [BAY.x1 + 0.75, H + 2.36, D / 2 + 0.08], normal: [0, 1] },
+  { at: [W / 2 + 0.06, 2.0, CORNER.z0 + 0.35], normal: [1, 0] },
+  { at: [-W / 2 - 0.06, H + 2.15, 0.75], normal: [-1, 0] },
 ];
