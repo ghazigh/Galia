@@ -89,6 +89,10 @@ export function AppShell() {
   const page = useRef<HTMLElement>(null);
   // Once a page has slid over it, the home screen is hidden outright (it stays mounted).
   const [covered, setCovered] = useState(!onHome);
+  // A deep link straight to a page (a notification, /tasks) doesn't pay for the 3D house until
+  // the home screen is actually visited.
+  const [homeVisited, setHomeVisited] = useState(onHome);
+  if (onHome && !homeVisited) setHomeVisited(true);
   useEffect(() => {
     if (onHome) {
       setCovered(false);
@@ -126,7 +130,7 @@ export function AppShell() {
     <>
       <Rail />
       <div inert={!onHome} aria-hidden={onHome ? undefined : true} style={{ visibility: onHome || !covered ? undefined : 'hidden' }}>
-        <HomePage active={onHome} />
+        {homeVisited && <HomePage active={onHome} />}
       </div>
       <AnimatePresence initial={false}>
         {!onHome && (
