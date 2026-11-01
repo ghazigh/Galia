@@ -45,7 +45,7 @@ export function JoinPage() {
           title="This invite can't be used"
           body={errorMessage(invite.error)}
           action={
-            <Link to="/" className="text-[14px] font-semibold text-accent">
+            <Link to="/" className="text-[14px] font-medium text-accent-ink">
               Go to sign in
             </Link>
           }

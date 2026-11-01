@@ -7,16 +7,19 @@ import { JoinPage } from '../features/auth/JoinPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { SetupPage } from '../features/auth/SetupPage';
 import { FocusPage } from '../features/focus/FocusPage';
-import { HomePage } from '../features/home/HomePage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { TasksPage } from '../features/tasks/TasksPage';
 import { errorMessage } from '../lib/api';
 import { useSession } from '../lib/queries';
+import { ThemeController } from '../lib/theme';
 import { AppShell } from './AppShell';
 import { AppDataProvider, UiProvider } from './context';
 
 const HousePlayground = import.meta.env.DEV
   ? lazy(() => import('../dev/HousePlayground').then((m) => ({ default: m.HousePlayground })))
+  : null;
+const ScenePlayground = import.meta.env.DEV
+  ? lazy(() => import('../dev/ScenePlayground').then((m) => ({ default: m.ScenePlayground })))
   : null;
 
 function Splash() {
@@ -54,7 +57,8 @@ function AuthGate() {
       <UiProvider>
         <Routes>
           <Route element={<AppShell />}>
-            <Route index element={<HomePage />} />
+            {/* The home screen is always mounted by the shell; other pages slide over it. */}
+            <Route index element={null} />
             <Route path="focus" element={<FocusPage />} />
             <Route path="tasks" element={<TasksPage />} />
             <Route path="settings" element={<SettingsPage />} />
@@ -94,6 +98,7 @@ function UpdatePrompt() {
 export function App() {
   return (
     <>
+      <ThemeController />
       <UpdatePrompt />
       <Routes>
         {HousePlayground && (
@@ -102,6 +107,16 @@ export function App() {
             element={
               <Suspense fallback={<Splash />}>
                 <HousePlayground />
+              </Suspense>
+            }
+          />
+        )}
+        {ScenePlayground && (
+          <Route
+            path="/__scene"
+            element={
+              <Suspense fallback={<Splash />}>
+                <ScenePlayground />
               </Suspense>
             }
           />
