@@ -10,18 +10,32 @@ import type { SceneView } from './layout';
 
 const HouseScene = lazy(() => import('./HouseScene'));
 
-let webglSupport: boolean | null = null;
+let probe: { webgl: boolean; software: boolean } | null = null;
+
+/** Checks once whether WebGL exists, and whether it is drawn in software (no GPU). */
+function probeWebGL(): { webgl: boolean; software: boolean } {
+  if (probe) return probe;
+  probe = { webgl: false, software: false };
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as WebGLRenderingContext | null;
+    if (gl) {
+      probe.webgl = true;
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      const renderer = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '');
+      probe.software = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer);
+      // Screenshots taken in development (in software) can still ask for the full settings.
+      if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('gpu')) probe.software = false;
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+    }
+  } catch {
+    probe.webgl = false;
+  }
+  return probe;
+}
 
 export function supportsWebGL(): boolean {
-  if (webglSupport === null) {
-    try {
-      const canvas = document.createElement('canvas');
-      webglSupport = Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
-    } catch {
-      webglSupport = false;
-    }
-  }
-  return webglSupport;
+  return probeWebGL().webgl;
 }
 
 /** Starts downloading the 3D chunk early (e.g. while the user signs in). */
@@ -87,7 +101,8 @@ export function HouseStage(props: HouseSceneProps) {
   return (
     <SceneBoundary fallback={<StageFallback {...props} />}>
       <Suspense fallback={<StageFallback {...props} illustrated={false} />}>
-        <HouseScene {...props} />
+        {/* Without a GPU every pixel is drawn on the CPU: keep to the lightest settings. */}
+        <HouseScene {...props} quality={probeWebGL().software ? 'saver' : props.quality} />
       </Suspense>
     </SceneBoundary>
   );

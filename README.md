@@ -17,6 +17,14 @@ mechanical room), ground floor (side entry, open living / dining / kitchen with 
 room), upper floor (three bedrooms, primary walk-in, bathroom with tub and separate shower), the roof
 and the backyard.
 
+The outside follows photos of the house: dark and light grey brick with a cream-siding stairwell
+strip, the entry bay under its own front gable with the flat metal canopy over a recessed door, a hip
+roof, the garage end in siding with its light brick corner column, and the porch with aluminum
+railings. The lot is sloped the way it really is: the driveway runs gently down into the garage, a
+stepped walkway climbs past an armour-stone wall (with a paved court and door under the porch), the
+front lawn sits a few steps below the porch, and the fenced backyard is level with the ground floor —
+the living room's porte-fenêtre opens straight onto the patio.
+
 - **Drag to orbit, pinch or scroll to zoom**, two fingers to pan; double-tap (or the ⌖ button) resets
   the view. The camera flies smoothly between views and is kept close to the house.
 - **Tesla-style labels.** Floors, the roof and the yard carry labels with leader lines ("BASEMENT · 1
@@ -248,10 +256,12 @@ Playwright browsers don't match the pinned version, point it at any Chromium wit
   fixture if yours are elsewhere.
 - **Northern-hemisphere seasons** (mowing May–Oct, tune-ups April/October, faucets winterized in
   October). Edit the frequency on the task if your climate differs.
-- **Layout from the floor plans.** Rooms, doors and the main fixtures follow the plans; small jogs in
-  the outer walls are straightened and the exterior (siding, windows, roof) is stylized. Rooms can be
-  renamed in Settings. The default deploy region is Montréal (`northamerica-northeast1`); change
-  `REGION` as needed.
+- **Layout from the floor plans and photos.** Rooms, doors and the main fixtures follow the plans;
+  the exterior (cladding, windows, entry bay, roof, porch, grades) follows photos of the front and the
+  garage end, with sizes estimated from them. The two photos disagree on handedness (the garage-end
+  photo shows the entry on the other side), so the model follows the front photo; the long side
+  without windows is drawn as a plain brick wall. Rooms can be renamed in Settings. The default
+  deploy region is Montréal (`northamerica-northeast1`); change `REGION` as needed.
 - **Where the sun is.** Without location access the sky uses your time zone's principal city (Toronto
   for America/Toronto) and assumes the front of the house faces away from the midday sun. Set the real
   direction in Settings → 3D house, or allow precise location in the Daylight panel.

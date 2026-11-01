@@ -111,8 +111,10 @@ export function CameraRig({ framing, flyKey, insetBottom, insetTop, interactive,
     controls.touches.two = CameraControls.ACTION.TOUCH_DOLLY_TRUCK;
     controls.touches.three = CameraControls.ACTION.TOUCH_TRUCK;
     // Keep the orbit point near the house so a stray pan can't lose it.
-    controls.setBoundary(new Box3(new Vector3(-12, -1, -9), new Vector3(16, 16, 9)));
+    controls.setBoundary(new Box3(new Vector3(-15, -1, -11), new Vector3(16, 16, 13)));
     controls.boundaryEnclosesCamera = false;
+    // Dev tooling (screenshots, the scene playground) can steer the camera directly.
+    if (import.meta.env.DEV) (window as unknown as { __houseCamera?: CameraControls }).__houseCamera = controls;
     const onStart = () => {
       lastInteraction.current = performance.now();
       onUserMoveRef.current(true);

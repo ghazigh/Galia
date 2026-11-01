@@ -7,7 +7,7 @@ import { Fog, PCFShadowMap, Vector3 } from 'three';
 import type { Daylight } from '../lib/daylight';
 import type { SceneQuality } from '../lib/prefs';
 import { CameraRig, type RigHandle } from './CameraRig';
-import { pulseStatus, RoofLayer, Site, Storey, type LayerOffsets } from './House';
+import { pulseStatus, RoofLayer, Storey, type LayerOffsets } from './House';
 import { LabelProjector, SceneLabels, type LabelRegistry, type LabelSpec, type LabelTone, type MarkerSpec } from './Labels';
 import {
   FIXTURE_ANCHORS,
@@ -19,6 +19,7 @@ import {
   type SceneView,
 } from './layout';
 import { Lights } from './Lights';
+import { Site } from './Site';
 import { Sky, SkyEnvironment } from './Sky';
 import { defaultFacing, displayAltitude, skyDirection, skyLook } from './sky';
 
@@ -164,7 +165,8 @@ export default function HouseScene({
 }: HouseSceneProps) {
   const fallbackInset = useRef(0);
   const inset = insetBottom ?? fallbackInset;
-  const offsets = useRef<LayerOffsets>({ basement: 0, ground: 0, upper: 0, roof: 0, site: 0 });
+  // `site` is the lot's height scale (it settles flat for the basement view).
+  const offsets = useRef<LayerOffsets>({ basement: 0, ground: 0, upper: 0, roof: 0, site: 1 });
   const registry = useRef<LabelRegistry>({ labels: new Map(), markers: new Map() });
   const rig = useRef<RigHandle>({ controls: null, reset: () => undefined });
   const animate = !reducedMotion;
@@ -224,8 +226,10 @@ export default function HouseScene({
 
     if (view.kind === 'exterior') {
       const outside: LabelSpec[] = [];
-      // Zig-zag left and right up the facade, like the labels around a car in the Tesla app.
-      const facadeU: Record<(typeof LEVELS)[number], number> = { upper: -1.2, ground: 1.9, basement: -2.2 };
+      // Zig-zag left and right up the facade, like the labels around a car in the Tesla app. The
+      // basement only shows above ground at the garage, so its label points at the garage door.
+      const facadeU: Record<'upper' | 'ground', number> = { upper: -1.6, ground: 2.6 };
+      const garage = FIXTURE_ANCHORS['garage-door'][0];
       for (const level of LEVELS) {
         const zones = levelZones(level).map((zone) => summaries[zone]).filter((s): s is ZoneSummary => Boolean(s));
         const total = zones.reduce(
@@ -236,7 +240,10 @@ export default function HouseScene({
         const name = LEVEL_DEFS.find((l) => l.id === level)?.name ?? level;
         outside.push({
           id: `level-${level}`,
-          anchor: { type: 'facade', layer: level, y: 1.45, u: facadeU[level] },
+          anchor:
+            level === 'basement'
+              ? { type: 'point', layer: garage.layer, point: [garage.point[0], 1.6, garage.point[2]], normal: garage.normal }
+              : { type: 'facade', layer: level, y: 1.45, u: facadeU[level] },
           title: name,
           value: valueOf(total),
           tone,
@@ -389,6 +396,8 @@ export default function HouseScene({
           highlight={highlightFixture}
           backyardHealth={summaries.backyard?.health}
           backyardSelected={selectedZone === 'backyard'}
+          offsets={offsets}
+          animate={animate}
           onYardTap={() => onSelectZone?.('backyard')}
         />
         <CameraRig

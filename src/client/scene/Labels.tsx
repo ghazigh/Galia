@@ -132,7 +132,9 @@ const point = new Vector3();
 function anchorWorld(anchor: LabelAnchor, offsets: LayerOffsets, cam: Vector3, out: Vector3): number {
   const base = layerBaseY(anchor.layer) + (anchor.layer === 'site' ? 0 : offsets[anchor.layer]);
   if (anchor.type === 'point') {
-    out.set(anchor.point[0], base + anchor.point[1], anchor.point[2]);
+    // The lot's heights scale down when it settles flat.
+    const y = anchor.layer === 'site' ? anchor.point[1] * offsets.site : base + anchor.point[1];
+    out.set(anchor.point[0], y, anchor.point[2]);
     if (!anchor.normal) return 1;
     const dx = cam.x - out.x;
     const dz = cam.z - out.z;
