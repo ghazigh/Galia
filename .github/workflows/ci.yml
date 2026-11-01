@@ -25,7 +25,8 @@ jobs:
       - run: npm run build
 
   e2e:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 installs its browser dependencies only on Ubuntu releases it knows.
+    runs-on: ubuntu-24.04
     needs: check
     steps:
       - uses: actions/checkout@v4

@@ -1,12 +1,13 @@
 import { todayIn } from '@shared/dates';
 import { initialDueDate, nextDueAfterCompletion } from '@shared/recurrence';
-import { planAssignment } from '@shared/reminders';
+import { planAssignment, planPoke, POKE_COOLDOWN_MINUTES } from '@shared/reminders';
 import type { CompleteInput, TaskCreateInput, TaskPatchInput } from '@shared/schemas';
 import { resolveSeed, SEED_TASKS } from '@shared/seed';
 import { canView } from '@shared/status';
 import type { FixtureId, Task, ZoneId } from '@shared/types';
 import { fixtureDef } from '@shared/zones';
 import type { Actor, AppContext } from '../context';
+import { listSubscriptions } from '../repos/push';
 import {
   deleteCompletion,
   getTask,
@@ -65,6 +66,37 @@ function notifyAssignment(ctx: AppContext, actor: Actor, task: Task): void {
   if (!planned) return;
   ctx.notifier.enqueue([planned]);
   void ctx.notifier.dispatch().catch((err) => console.error('Push dispatch failed', err));
+}
+
+/** Sends a household member a push asking them to look at a task. */
+export function pokeAboutTask(
+  ctx: AppContext,
+  actor: Actor,
+  id: string,
+  userId: string,
+): { notificationsOn: boolean } {
+  const task = requireTask(ctx, actor, id);
+  const target = actor.members.find((member) => member.id === userId);
+  if (!target) throw new HttpError(422, 'That person is not part of this household');
+  if (target.id === actor.user.id) throw new HttpError(422, "You can't poke yourself");
+  if (!canView(task, target.id)) throw new HttpError(422, `${target.name} can't see this private task`);
+  if (task.completedAt) throw new HttpError(409, 'This task is already done');
+  const planned = planPoke({
+    task,
+    target: { id: target.id, name: target.name, prefs: target.prefs },
+    pokerName: actor.user.name,
+    now: ctx.now(),
+    timeZone: actor.household.timeZone,
+  });
+  if (ctx.notifier.enqueue([planned]) === 0) {
+    throw new HttpError(
+      429,
+      `You already poked ${target.name} about this. Try again in ${POKE_COOLDOWN_MINUTES} minutes.`,
+      'poke_cooldown',
+    );
+  }
+  void ctx.notifier.dispatch().catch((err) => console.error('Push dispatch failed', err));
+  return { notificationsOn: ctx.notifier.enabled && listSubscriptions(ctx.db, target.id).length > 0 };
 }
 
 export function createTask(ctx: AppContext, actor: Actor, input: TaskCreateInput): Task {

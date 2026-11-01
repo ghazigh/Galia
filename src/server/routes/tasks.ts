@@ -1,4 +1,4 @@
-import { completeSchema, snoozeSchema, taskCreateSchema, taskPatchSchema } from '@shared/schemas';
+import { completeSchema, pokeSchema, snoozeSchema, taskCreateSchema, taskPatchSchema } from '@shared/schemas';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppContext } from '../context';
@@ -10,6 +10,7 @@ import {
   deleteTask,
   listTasks,
   patchTask,
+  pokeAboutTask,
   requireTask,
   restoreTask,
   seedCatalog,
@@ -60,6 +61,12 @@ export function taskRoutes(ctx: AppContext) {
     const actor = requireActor(c);
     const { until } = await parseBody(c, snoozeSchema);
     return c.json(snoozeTask(ctx, actor, c.req.param('id'), until));
+  });
+
+  app.post('/tasks/:id/poke', async (c) => {
+    const actor = requireActor(c);
+    const { userId } = await parseBody(c, pokeSchema);
+    return c.json(pokeAboutTask(ctx, actor, c.req.param('id'), userId));
   });
 
   app.get('/tasks/:id/history', (c) => c.json(taskHistory(ctx, requireActor(c), c.req.param('id'))));

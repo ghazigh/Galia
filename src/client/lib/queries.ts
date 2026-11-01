@@ -192,3 +192,24 @@ export function useAddCatalog() {
     },
   });
 }
+
+// ── Ask about a task / poke someone ─────────────────────────────────────────────────────────
+
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export function useAskTask() {
+  return useMutation({
+    mutationFn: ({ id, question, history }: { id: string; question: string; history: ChatTurn[] }) =>
+      api<{ answer: string }>(`/tasks/${id}/ask`, { body: { question, history } }),
+  });
+}
+
+export function usePoke() {
+  return useMutation({
+    mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+      api<{ notificationsOn: boolean }>(`/tasks/${id}/poke`, { body: { userId } }),
+  });
+}

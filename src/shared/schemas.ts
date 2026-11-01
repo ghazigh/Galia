@@ -128,3 +128,14 @@ export const pushSubscriptionSchema = z.object({
 
 export const aiSuggestSchema = z.object({ prompt: z.string().trim().min(3).max(500) });
 export const aiParseSchema = z.object({ text: z.string().trim().min(2).max(500) });
+export const aiAskSchema = z.object({
+  question: z.string().trim().min(1).max(1000),
+  /** Earlier turns of this conversation, oldest first (kept on the device, not stored). */
+  history: z
+    .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(8000) }))
+    .max(20)
+    .default([]),
+});
+export type AiAskInput = z.infer<typeof aiAskSchema>;
+
+export const pokeSchema = z.object({ userId: z.string().min(1).max(64) });

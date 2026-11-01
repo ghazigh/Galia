@@ -54,7 +54,7 @@ describe('setup and sign-in', () => {
     expect(tasks).toHaveLength(SEED_TASKS.length);
     expect(tasks.every((t) => t.kind === 'maintenance' && t.visibility === 'shared')).toBe(true);
     const vent = tasks.find((t) => t.seedKey === 'dryer-vent-cleaning')!;
-    expect(vent).toMatchObject({ dueDate: '2026-11-01', priority: 'critical', zoneId: 'mechanical' });
+    expect(vent).toMatchObject({ dueDate: '2026-11-01', priority: 'critical', zoneId: 'laundry' });
   });
 
   it('refuses a second setup and rejects bad passwords', async () => {
@@ -127,6 +127,37 @@ describe('tasks', () => {
       body: 'Book the car service',
       url: `/task/${created.body.id}`,
     });
+  });
+
+  it('pokes the partner about a task once per cooldown', async () => {
+    await partner.post('/api/push/subscribe', {
+      endpoint: 'https://push.example/sam',
+      keys: { p256dh: 'key', auth: 'auth' },
+    });
+    const tasks = (await env.owner.get('/api/tasks')).body as Task[];
+    const vent = tasks.find((t) => t.seedKey === 'dryer-vent-cleaning')!;
+    const poke = await env.owner.post(`/api/tasks/${vent.id}/poke`, { userId: partnerId });
+    expect(poke.status).toBe(200);
+    expect(poke.body).toEqual({ notificationsOn: true });
+    await env.ctx.notifier.dispatch();
+    expect(env.push.sent.map((s) => s.payload)).toEqual([
+      expect.objectContaining({ title: '👉 Ghazi poked you', url: `/task/${vent.id}` }),
+    ]);
+    const again = await env.owner.post(`/api/tasks/${vent.id}/poke`, { userId: partnerId });
+    expect(again.status).toBe(429);
+    env.setNow(new Date(NOW.getTime() + 11 * 60_000));
+    expect((await env.owner.post(`/api/tasks/${vent.id}/poke`, { userId: partnerId })).status).toBe(200);
+  });
+
+  it('refuses pokes about private tasks, to yourself or to strangers', async () => {
+    const secret = await env.owner.post('/api/tasks', { title: 'Plan the party', visibility: 'personal' });
+    expect((await env.owner.post(`/api/tasks/${secret.body.id}/poke`, { userId: partnerId })).status).toBe(422);
+    const shared = await env.owner.post('/api/tasks', { title: 'Take out the recycling' });
+    const meId = env.bootstrap.me.id;
+    expect((await env.owner.post(`/api/tasks/${shared.body.id}/poke`, { userId: meId })).status).toBe(422);
+    expect((await env.owner.post(`/api/tasks/${shared.body.id}/poke`, { userId: 'nobody' })).status).toBe(422);
+    const partnerPokes = await partner.post(`/api/tasks/${shared.body.id}/poke`, { userId: meId });
+    expect(partnerPokes.body).toEqual({ notificationsOn: false });
   });
 
   it('rejects assigning to someone outside the household', async () => {

@@ -11,10 +11,11 @@ import type {
 } from './types';
 
 /**
- * Expert maintenance plan for the house profile in the PRD:
- *   Level −1  garage, mechanical room (central heat pump, hot water tank, laundry)
- *   Level 0   entry, living room, kitchen (dishwasher)
- *   Level +1  three bedrooms, bathroom (shower + bathtub)
+ * Expert maintenance plan for the house (PRD profile, refined with the floor plan):
+ *   Level −1  garage, family room, laundry (washer, vented dryer), mechanical room (central heat
+ *             pump, water heater, air exchanger, sump pump)
+ *   Level 0   side entry, open living / dining / kitchen (island with dishwasher), powder room
+ *   Level +1  three bedrooms (primary with a walk-in), bathroom (bathtub + separate shower)
  *   Outside   backyard lawn, heat pump outdoor unit; roof and gutters
  *
  * "essential" items come straight from the PRD; "recommended" are the additions a home inspector
@@ -86,7 +87,7 @@ export const SEED_TASKS: readonly SeedTask[] = [
     key: 'dryer-vent-cleaning',
     group: 'essential',
     title: 'Clean the dryer exhaust vent',
-    zoneId: 'mechanical',
+    zoneId: 'laundry',
     fixtureId: 'dryer-vent',
     priority: 'critical',
     risks: ['fire'],
@@ -112,7 +113,7 @@ export const SEED_TASKS: readonly SeedTask[] = [
     key: 'dryer-lint-trap',
     group: 'essential',
     title: 'Clean the dryer lint trap',
-    zoneId: 'mechanical',
+    zoneId: 'laundry',
     fixtureId: 'dryer',
     priority: 'normal',
     risks: ['fire'],
@@ -520,7 +521,7 @@ export const SEED_TASKS: readonly SeedTask[] = [
     key: 'washer-hoses',
     group: 'recommended',
     title: 'Check washer hoses & clean the washer',
-    zoneId: 'mechanical',
+    zoneId: 'laundry',
     fixtureId: 'washer',
     priority: 'normal',
     risks: ['water'],
@@ -536,6 +537,55 @@ export const SEED_TASKS: readonly SeedTask[] = [
         'Run an empty hot cleaning cycle with washer cleaner.',
         'Leave the door ajar between loads so it dries out.',
       ],
+    },
+  },
+  {
+    key: 'sump-pump-test',
+    group: 'recommended',
+    title: 'Test the sump pump',
+    zoneId: 'mechanical',
+    fixtureId: 'sump-pump',
+    priority: 'high',
+    risks: ['water'],
+    recurrence: { kind: 'months', months: [3, 9], day: 15 },
+    firstDueInDays: 12,
+    estimateMinutes: 15,
+    guide: {
+      why: 'The sump pump is what keeps groundwater out of the basement during the spring thaw and heavy rain, and it fails silently. Test it before each wet season so you find out in the dry.',
+      steps: [
+        'Check the pump is plugged in (into a GFCI outlet if there is one) and the outlet has power.',
+        'Slowly pour a bucket of water into the pit until the float rises.',
+        'The pump should start, empty the pit within a few seconds and shut off on its own.',
+        'Outside, check the discharge pipe empties at least 1.5 m (5 ft) from the foundation and is not blocked or frozen.',
+        'Unplug the pump, lift out debris from the pit and check the check valve on the discharge pipe does not let water flow back.',
+      ],
+      supplies: ['Bucket', 'Work gloves', 'Flashlight'],
+      safety:
+        'Unplug the pump before reaching into the pit. A battery backup or a water alarm next to the pit is cheap insurance against a power cut during a storm.',
+    },
+  },
+  {
+    key: 'air-exchanger-filters',
+    group: 'recommended',
+    title: 'Clean the air exchanger filters',
+    zoneId: 'mechanical',
+    fixtureId: 'air-exchanger',
+    priority: 'normal',
+    risks: ['air'],
+    recurrence: { kind: 'interval', every: 2, unit: 'month' },
+    firstDueInDays: 18,
+    estimateMinutes: 20,
+    guide: {
+      why: 'The air exchanger brings in fresh air and pushes out humid, stale air. Clogged filters cut the airflow, which hurts indoor air quality and lets condensation build up on windows in winter.',
+      steps: [
+        'Turn the unit off and unplug it.',
+        'Open the door and slide out the filters.',
+        'Vacuum the dust off, then wash them in warm soapy water, rinse and let them dry completely.',
+        'Once a year, also take out the core and soak it in lukewarm soapy water, then rinse and dry it.',
+        'Check the condensate drain hose is not kinked or clogged, wipe the inside of the cabinet, then put everything back and plug it in.',
+        'Outside, clear leaves, snow or ice from the intake and exhaust hoods.',
+      ],
+      supplies: ['Vacuum with brush attachment', 'Mild dish soap'],
     },
   },
   {

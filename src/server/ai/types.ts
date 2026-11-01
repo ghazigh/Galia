@@ -12,8 +12,15 @@ export class AiError extends Error {
   }
 }
 
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface GenerateRequest<T> {
   system: string;
+  /** Earlier turns of a conversation, oldest first, before `user`. */
+  history?: ChatTurn[];
   user: string;
   schema: z.ZodType<T>;
   /** Identifier for the output schema (required by some providers). */

@@ -2,28 +2,32 @@ import type { ZoneHealth, ZoneSummary } from '@shared/status';
 import type { FixtureId, ZoneId } from '@shared/types';
 import { motion, useSpring, useTransform, type MotionValue } from 'motion/react';
 import { memo, useEffect, useId, useMemo, type KeyboardEvent, type ReactNode } from 'react';
-import { backWallDetails, floorTexture, leftWallDetails, roomFurniture, Roof, wallMounted, Yard } from './furniture';
-import { project, pts, shade, type Bounds } from './iso';
+import { backWallArt, floorTexture, FrontWalls, partFurniture, partMounted, Roof, sideWallArt, Yard } from './furniture';
+import { faceTransform, project, pts, shade, type Bounds } from './iso';
 import {
   BACK_WALL,
   cameraFor,
   D,
   FIXTURE_ANCHORS,
   focusForZone,
+  layerOrigin,
   LEVEL_KEYS,
-  levelBase,
   LOW_WALL,
+  mainRect,
+  paintOrder,
+  partitionSegments,
+  PLAN,
   ROOF,
-  ROOF_BASE,
-  ROOMS,
   SLAB,
   T,
+  toWorld,
   W,
   YARD,
   zoneAnchor,
   type FocusTarget,
+  type Layer,
   type LevelKey,
-  type RoomDef,
+  type RoomRect,
 } from './model';
 import { getPalette, type HousePalette } from './palette';
 import { Box } from './primitives';
@@ -44,8 +48,6 @@ export interface HouseViewProps {
 
 const SPRING = { type: 'spring', stiffness: 120, damping: 22, mass: 0.9 } as const;
 const LIFT = 7; // how far other storeys slide away when one is in focus
-
-type Layer = LevelKey | 'roof';
 
 function layerMotion(layer: Layer, focus: FocusTarget): { y: number; opacity: number } {
   if (focus === 'overview') return { y: 0, opacity: 1 };
@@ -91,6 +93,12 @@ function onActivate(handler: () => void) {
       handler();
     }
   };
+}
+
+/** SVG translation that places a storey (or the roof) at its exploded position. */
+function layerTransform(layer: Layer): string {
+  const [x, y] = project(...layerOrigin(layer));
+  return `translate(${x.toFixed(3)} ${y.toFixed(3)})`;
 }
 
 function describeZone(label: string, summary: ZoneSummary | undefined): string {
@@ -171,78 +179,100 @@ function LeftWall({ height, p, clipId }: { height: MotionValue<number>; p: House
 
 // ── Rooms ────────────────────────────────────────────────────────────────────────────────────
 
-interface RoomProps {
-  room: RoomDef;
-  index: number;
-  last: boolean;
+const EDGE = 1e-6;
+// Wall art is drawn in face-local coordinates on the inner faces of the two tall walls.
+const faceX = faceTransform('x', T);
+const faceY = faceTransform('y', T);
+
+/** The floor of one part, inset so it meets the walls around it. */
+function floorInset(rect: RoomRect) {
+  const inset = (outer: boolean) => (outer ? T : T / 2);
+  return {
+    x0: rect.x0 + inset(rect.x0 < EDGE),
+    x1: rect.x1 - inset(rect.x1 > W - EDGE),
+    y0: rect.y0 + inset(rect.y0 < EDGE),
+    y1: rect.y1 - inset(rect.y1 > D - EDGE),
+  };
+}
+
+function Partitions({ rect, p }: { rect: RoomRect; p: HousePalette }) {
+  return (
+    <>
+      {partitionSegments(rect).map((segment) =>
+        segment.axis === 'x' ? (
+          <Box
+            key={`x${segment.from}`}
+            at={[segment.from, segment.at - T / 2, 0]}
+            size={[segment.to - segment.from, T, LOW_WALL]}
+            color={p.wallBack}
+            left={p.wallBack}
+            right={p.poche}
+            top={p.poche}
+          />
+        ) : (
+          <Box
+            key={`y${segment.from}`}
+            at={[segment.at - T / 2, segment.from, 0]}
+            size={[T, segment.to - segment.from, LOW_WALL]}
+            color={p.wallLeft}
+            left={p.poche}
+            right={p.wallLeft}
+            top={p.poche}
+          />
+        ),
+      )}
+    </>
+  );
+}
+
+interface RoomPartProps {
+  rect: RoomRect;
   p: HousePalette;
-  wallHeight: MotionValue<number>;
   state: 'normal' | 'selected' | 'dimmed';
   health: ZoneHealth;
-  label: string;
+  /** Floor label, on the largest part of a zone only. */
+  label: string | null;
   ariaLabel: string;
-  showLabel: boolean;
-  idPrefix: string;
+  focused: boolean;
   onSelect?: (zone: ZoneId) => void;
 }
 
-const Room = memo(function Room({
-  room,
-  index,
-  last,
-  p,
-  wallHeight,
-  state,
-  health,
-  label,
-  ariaLabel,
-  showLabel,
-  idPrefix,
-  onSelect,
-}: RoomProps) {
-  const fx0 = room.x0 + (index === 0 ? T : T / 2);
-  const fx1 = room.x1 - (last ? T : T / 2);
+const RoomPart = memo(function RoomPart({ rect, p, state, health, label, ariaLabel, focused, onSelect }: RoomPartProps) {
+  const f = floorInset(rect);
   const floorPts = pts([
-    [fx0, T, 0],
-    [fx1, T, 0],
-    [fx1, D, 0],
-    [fx0, D, 0],
+    [f.x0, f.y0, 0],
+    [f.x1, f.y0, 0],
+    [f.x1, f.y1, 0],
+    [f.x0, f.y1, 0],
   ]);
-  const wallClip = `${idPrefix}-${room.zone}-wall`;
-  const leftClip = `${idPrefix}-${room.zone}-left`;
+  const zone = rect.zone;
+  const selectable = Boolean(zone && onSelect);
   const tint = healthColor(health, p);
-  const select = () => onSelect?.(room.zone);
-  const furniture = useMemo(() => roomFurniture(room.zone, p), [room.zone, p]);
-  const wallArt = useMemo(() => backWallDetails(room.zone, p), [room.zone, p]);
-  const mounted = useMemo(() => wallMounted(room.zone, p), [room.zone, p]);
-  const leftArt = useMemo(() => (index === 0 ? leftWallDetails(room.zone, p) : null), [index, room.zone, p]);
-  const texture = useMemo(() => floorTexture(room.floor, fx0, fx1, p), [room.floor, fx0, fx1, p]);
-  const [lx, ly] = project(fx0 + 0.22, D - 0.22, 0);
+  const select = () => zone && onSelect?.(zone);
+  const furniture = useMemo(() => partFurniture(rect.id, p), [rect.id, p]);
+  const mounted = useMemo(() => partMounted(rect.id, p), [rect.id, p]);
+  const texture = useMemo(() => floorTexture(rect.floor, f.x0, f.x1, f.y0, f.y1, p), [rect.floor, f.x0, f.x1, f.y0, f.y1, p]);
+  const [lx, ly] = project(f.x0 + 0.22, f.y1 - 0.22, 0);
 
   return (
     <motion.g
-      className="house-room"
-      role="button"
-      tabIndex={onSelect ? 0 : -1}
-      aria-label={ariaLabel}
-      aria-pressed={state === 'selected'}
+      className={zone ? 'house-room' : undefined}
+      role={zone ? 'button' : undefined}
+      tabIndex={zone ? (selectable ? 0 : -1) : undefined}
+      aria-label={zone ? ariaLabel : undefined}
+      aria-pressed={zone ? state === 'selected' : undefined}
       onClick={(event) => {
+        if (!zone) return;
         event.stopPropagation();
         select();
       }}
-      onKeyDown={onActivate(select)}
+      onKeyDown={zone ? onActivate(select) : undefined}
       initial={false}
       animate={{ opacity: state === 'dimmed' ? 0.4 : 1 }}
       transition={{ duration: 0.35 }}
-      style={{ cursor: onSelect ? 'pointer' : undefined }}
+      style={{ cursor: selectable ? 'pointer' : undefined }}
     >
-      {index === 0 && (
-        <>
-          <LeftWall height={wallHeight} p={p} clipId={leftClip} />
-          <g clipPath={`url(#${leftClip})`}>{leftArt}</g>
-        </>
-      )}
-      <polygon points={floorPts} fill={p.floors[room.floor].base} />
+      <polygon points={floorPts} fill={p.floors[rect.floor].base} />
       {texture}
       {tint && (
         <polygon
@@ -253,25 +283,17 @@ const Room = memo(function Room({
         />
       )}
       {state === 'selected' && <polygon points={floorPts} fill={p.accent} opacity={0.12} />}
-      <BackWall x0={room.x0} x1={room.x1} height={wallHeight} p={p} clipId={wallClip} />
-      <g clipPath={`url(#${wallClip})`}>{wallArt}</g>
+      <Partitions rect={rect} p={p} />
       {mounted && (
-        <motion.g initial={false} animate={{ opacity: showLabel ? 1 : 0 }} transition={{ duration: 0.4, delay: showLabel ? 0.25 : 0 }}>
+        <motion.g initial={false} animate={{ opacity: focused ? 1 : 0 }} transition={{ duration: 0.4, delay: focused ? 0.25 : 0 }}>
           {mounted}
         </motion.g>
       )}
       {furniture}
       {state === 'selected' && (
-        <polygon
-          points={floorPts}
-          fill="none"
-          stroke={p.accent}
-          strokeWidth={0.07}
-          strokeLinejoin="round"
-          className="house-outline"
-        />
+        <polygon points={floorPts} fill="none" stroke={p.accent} strokeWidth={0.07} strokeLinejoin="round" className="house-outline" />
       )}
-      {showLabel && (
+      {label && focused && state !== 'dimmed' && (
         <text
           className="house-floor-label"
           transform={`translate(${lx} ${ly}) matrix(0.866 0.5 -0.866 0.5 0 0)`}
@@ -285,19 +307,6 @@ const Room = memo(function Room({
     </motion.g>
   );
 });
-
-function Partition({ x, p }: { x: number; p: HousePalette }) {
-  return (
-    <Box
-      at={[x - T / 2, T, 0]}
-      size={[T, D - T, LOW_WALL]}
-      color={p.wallLeft}
-      left={p.poche}
-      right={p.wallLeft}
-      top={p.poche}
-    />
-  );
-}
 
 interface StoreyProps {
   level: LevelKey;
@@ -317,57 +326,17 @@ function Storey({ level, p, focus, selectedZone, summaries, zoneLabel, idPrefix,
     wallHeight.set(focused ? BACK_WALL.focus : BACK_WALL.overview);
   }, [focused, wallHeight]);
 
-  const rooms = ROOMS[level];
-  const base = levelBase(level);
+  const parts = useMemo(() => paintOrder(PLAN[level]), [level]);
+  const backArt = useMemo(() => backWallArt(level, p), [level, p]);
+  const sideArt = useMemo(() => sideWallArt(level, p), [level, p]);
   const motionTarget = layerMotion(level, focus);
   const anySelected = selectedZone !== null && selectedZone !== 'house';
-
-  const slab = (
-    <Box
-      at={[0, 0, -SLAB]}
-      size={[W, D, SLAB]}
-      color={p.poche}
-      left={p.poche}
-      right={shade(p.poche, -0.18)}
-      top={p.floors[rooms[0].floor].base}
-    />
-  );
+  const backClip = `${idPrefix}-${level}-back`;
+  const sideClip = `${idPrefix}-${level}-side`;
 
   return (
     <motion.g initial={false} animate={motionTarget} transition={SPRING} style={{ pointerEvents: motionTarget.opacity < 0.05 ? 'none' : undefined }}>
-      <g transform={`translate(0 ${-base})`}>
-        {slab}
-        {rooms.map((room, index) => {
-          const summary = summaries[room.zone];
-          const label = zoneLabel(room.zone);
-          return (
-            <g key={room.zone}>
-              <Room
-                room={room}
-                index={index}
-                last={index === rooms.length - 1}
-                p={p}
-                wallHeight={wallHeight}
-                state={!anySelected ? 'normal' : selectedZone === room.zone ? 'selected' : 'dimmed'}
-                health={summary?.health ?? 'empty'}
-                label={label}
-                ariaLabel={describeZone(label, summary)}
-                showLabel={focused}
-                idPrefix={idPrefix}
-                onSelect={onSelect}
-              />
-              {index < rooms.length - 1 && <Partition x={room.x1} p={p} />}
-            </g>
-          );
-        })}
-        <Box
-          at={[W - T, T, 0]}
-          size={[T, D - T, LOW_WALL]}
-          color={p.wallExterior}
-          left={p.poche}
-          right={p.wallExterior}
-          top={p.poche}
-        />
+      <g transform={layerTransform(level)}>
         {level === 'ground' && (
           <YardZone
             p={p}
@@ -377,6 +346,41 @@ function Storey({ level, p, focus, selectedZone, summaries, zoneLabel, idPrefix,
             onSelect={onSelect}
           />
         )}
+        <Box
+          at={[0, 0, -SLAB]}
+          size={[W, D, SLAB]}
+          color={p.poche}
+          left={p.poche}
+          right={shade(p.poche, -0.18)}
+          top={p.floors[PLAN[level][0].floor].base}
+        />
+        <LeftWall height={wallHeight} p={p} clipId={sideClip} />
+        <g clipPath={`url(#${sideClip})`}>
+          <g transform={faceX}>{sideArt}</g>
+        </g>
+        <BackWall x0={0} x1={W} height={wallHeight} p={p} clipId={backClip} />
+        <g clipPath={`url(#${backClip})`}>
+          <g transform={faceY}>{backArt}</g>
+        </g>
+        {parts.map((rect) => {
+          const zone = rect.zone;
+          const summary = zone ? summaries[zone] : undefined;
+          const label = zone ? zoneLabel(zone) : '';
+          return (
+            <RoomPart
+              key={rect.id}
+              rect={rect}
+              p={p}
+              state={!anySelected ? 'normal' : zone && selectedZone === zone ? 'selected' : 'dimmed'}
+              health={summary?.health ?? 'empty'}
+              label={zone && mainRect(zone) === rect ? label : null}
+              ariaLabel={describeZone(label, summary)}
+              focused={focused}
+              onSelect={onSelect}
+            />
+          );
+        })}
+        <FrontWalls level={level} p={p} />
       </g>
     </motion.g>
   );
@@ -470,7 +474,7 @@ function RoofLayer({
   return (
     <motion.g initial={false} animate={motionTarget} transition={SPRING} style={{ pointerEvents: motionTarget.opacity < 0.05 ? 'none' : undefined }}>
       <motion.g
-        transform={`translate(0 ${-ROOF_BASE})`}
+        transform={layerTransform('roof')}
         className="house-room"
         role="button"
         tabIndex={onSelect ? 0 : -1}
@@ -506,10 +510,6 @@ function RoofLayer({
 
 // ── Overlay: status pins and fixture highlights ─────────────────────────────────────────────
 
-function layerBase(layer: Layer): number {
-  return layer === 'roof' ? ROOF_BASE : levelBase(layer);
-}
-
 function Pin({
   zone,
   summary,
@@ -527,7 +527,7 @@ function Pin({
   if (!anchor) return null;
   const color = healthColor(summary.health, p);
   if (!color || summary.health === 'ok') return null;
-  const [x, y] = project(anchor.point[0], anchor.point[1], anchor.point[2] + layerBase(anchor.level));
+  const [x, y] = project(...toWorld(anchor.level, anchor.point));
   const count = summary.overdue + summary.today + summary.soon;
   return (
     <g
@@ -562,7 +562,7 @@ function FixtureRings({ fixture, layer, p }: { fixture: FixtureId; layer: Layer;
   return (
     <>
       {FIXTURE_ANCHORS[fixture].filter((anchor) => anchor.level === layer).map(({ level, point }, i) => {
-        const [x, y] = project(point[0], point[1], point[2] + layerBase(level));
+        const [x, y] = project(...toWorld(level, point));
         return (
           <g key={i} transform={`translate(${x} ${y})`} pointerEvents="none">
             <circle r={0.55} fill={p.accent} opacity={0.18} className="house-ping" />
@@ -603,7 +603,7 @@ export function HouseView({
   const onSelect = onSelectZone ? (zone: ZoneId) => onSelectZone(zone === selectedZone ? null : zone) : undefined;
   const anySelected = selectedZone !== null && selectedZone !== 'house';
 
-  const shadowCenter = project(W / 2 + 2, D / 2, -SLAB - 0.4);
+  const shadowCenter = project(...toWorld('basement', [W / 2, D / 2, -SLAB - 0.4]));
   const layers: Layer[] = [...LEVEL_KEYS, 'roof'];
 
   return (

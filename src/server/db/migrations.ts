@@ -117,4 +117,8 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX outbox_pending ON outbox(sent_at, deliver_after);
   `,
+  /* 2 — rooms from the floor plan: the laundry has its own room */ `
+  UPDATE tasks SET zone_id = 'laundry'
+    WHERE zone_id = 'mechanical' AND fixture_id IN ('washer', 'dryer', 'dryer-vent');
+  `,
 ];

@@ -179,3 +179,37 @@ describe('AI routes', () => {
     expect(res.body).toEqual({ error: 'Busy', code: 'ai_rate_limited' });
   });
 });
+
+describe('asking about a task', () => {
+  it('sends the task details and the conversation so far, and returns the answer', async () => {
+    const { provider, requests } = fakeProvider({ answer: '  Use a 16x25x1 filter (406 × 635 mm).  ' });
+    const { app } = createTestApp({ ai: provider });
+    const user = client(app);
+    await user.post('/api/setup', {
+      householdName: 'Home',
+      timeZone: 'America/Toronto',
+      name: 'Ghazi',
+      email: 'g@example.com',
+      password: 'long enough password',
+      seedGroups: ['essential'],
+    });
+    const tasks = (await user.get('/api/tasks')).body as { id: string; title: string; seedKey: string }[];
+    const filter = tasks.find((t) => t.seedKey === 'heat-pump-filter-check')!;
+    const res = await user.post(`/api/tasks/${filter.id}/ask`, {
+      question: 'What size do I buy?',
+      history: [
+        { role: 'user', content: 'Where is the filter?' },
+        { role: 'assistant', content: 'In the return-air slot of the air handler.' },
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ answer: 'Use a 16x25x1 filter (406 × 635 mm).' });
+    const [request] = requests;
+    expect(request.user).toBe('What size do I buy?');
+    expect(request.history).toHaveLength(2);
+    expect(request.system).toContain(`Title: ${filter.title}`);
+    expect(request.system).toContain('Where: Mechanical room');
+    expect(request.system).toContain('Steps:\n1. ');
+    expect((await user.post('/api/tasks/nope/ask', { question: 'hi' })).status).toBe(404);
+  });
+});
