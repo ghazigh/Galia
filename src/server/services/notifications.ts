@@ -95,6 +95,25 @@ export class Notifier {
     return this.running;
   }
 
+  /**
+   * Sends what is due before the current request answers. Cloud Run only gives an instance CPU
+   * while it handles a request, so a send left running after the response can stall until the
+   * next request arrives. Never throws, and gives up waiting after `timeoutMs`.
+   */
+  async flush(timeoutMs = 8000): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, timeoutMs);
+    });
+    try {
+      await Promise.race([this.dispatch().then(() => undefined), timeout]);
+    } catch (err) {
+      console.error('Push dispatch failed', err);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   private async dispatchOnce(): Promise<DispatchResult> {
     const result: DispatchResult = { sent: 0, failed: 0, skipped: 0 };
     if (!this.sender.enabled) return result;
