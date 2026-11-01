@@ -29,7 +29,9 @@ export function taskRoutes(ctx: AppContext) {
   app.post('/tasks', async (c) => {
     const actor = requireActor(c);
     const input = await parseBody(c, taskCreateSchema);
-    return c.json(createTask(ctx, actor, input), 201);
+    const task = createTask(ctx, actor, input);
+    await ctx.notifier.flush();
+    return c.json(task, 201);
   });
 
   app.get('/tasks/:id', (c) => c.json(requireTask(ctx, requireActor(c), c.req.param('id'))));
@@ -37,7 +39,9 @@ export function taskRoutes(ctx: AppContext) {
   app.patch('/tasks/:id', async (c) => {
     const actor = requireActor(c);
     const patch = await parseBody(c, taskPatchSchema);
-    return c.json(patchTask(ctx, actor, c.req.param('id'), patch));
+    const task = patchTask(ctx, actor, c.req.param('id'), patch);
+    await ctx.notifier.flush();
+    return c.json(task);
   });
 
   app.delete('/tasks/:id', (c) => {
@@ -66,7 +70,9 @@ export function taskRoutes(ctx: AppContext) {
   app.post('/tasks/:id/poke', async (c) => {
     const actor = requireActor(c);
     const { userId } = await parseBody(c, pokeSchema);
-    return c.json(pokeAboutTask(ctx, actor, c.req.param('id'), userId));
+    const result = pokeAboutTask(ctx, actor, c.req.param('id'), userId);
+    await ctx.notifier.flush();
+    return c.json(result);
   });
 
   app.get('/tasks/:id/history', (c) => c.json(taskHistory(ctx, requireActor(c), c.req.param('id'))));

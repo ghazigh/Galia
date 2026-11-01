@@ -64,8 +64,8 @@ function notifyAssignment(ctx: AppContext, actor: Actor, task: Task): void {
     timeZone: actor.household.timeZone,
   });
   if (!planned) return;
+  // The route flushes the outbox before it responds.
   ctx.notifier.enqueue([planned]);
-  void ctx.notifier.dispatch().catch((err) => console.error('Push dispatch failed', err));
 }
 
 /** Sends a household member a push asking them to look at a task. */
@@ -74,7 +74,7 @@ export function pokeAboutTask(
   actor: Actor,
   id: string,
   userId: string,
-): { notificationsOn: boolean } {
+): { notificationsOn: boolean; heldUntil: string | null } {
   const task = requireTask(ctx, actor, id);
   const target = actor.members.find((member) => member.id === userId);
   if (!target) throw new HttpError(422, 'That person is not part of this household');
@@ -95,8 +95,12 @@ export function pokeAboutTask(
       'poke_cooldown',
     );
   }
-  void ctx.notifier.dispatch().catch((err) => console.error('Push dispatch failed', err));
-  return { notificationsOn: ctx.notifier.enabled && listSubscriptions(ctx.db, target.id).length > 0 };
+  const deliverAt = new Date(planned.deliverAfter);
+  return {
+    notificationsOn: ctx.notifier.enabled && listSubscriptions(ctx.db, target.id).length > 0,
+    // Set when the poke waits for the end of the other person's quiet hours.
+    heldUntil: deliverAt > ctx.now() ? planned.deliverAfter : null,
+  };
 }
 
 export function createTask(ctx: AppContext, actor: Actor, input: TaskCreateInput): Task {

@@ -120,7 +120,6 @@ describe('tasks', () => {
       assigneeId: partnerId,
     });
     expect(created.body).toMatchObject({ assigneeId: partnerId, assignedById: env.bootstrap.me.id });
-    await env.ctx.notifier.dispatch();
     expect(env.push.sent).toHaveLength(1);
     expect(env.push.sent[0].payload).toMatchObject({
       title: 'Ghazi assigned you a task',
@@ -138,8 +137,8 @@ describe('tasks', () => {
     const vent = tasks.find((t) => t.seedKey === 'dryer-vent-cleaning')!;
     const poke = await env.owner.post(`/api/tasks/${vent.id}/poke`, { userId: partnerId });
     expect(poke.status).toBe(200);
-    expect(poke.body).toEqual({ notificationsOn: true });
-    await env.ctx.notifier.dispatch();
+    expect(poke.body).toEqual({ notificationsOn: true, heldUntil: null });
+    // Sent before the request answers: nothing is left running in the background.
     expect(env.push.sent.map((s) => s.payload)).toEqual([
       expect.objectContaining({ title: '👉 Ghazi poked you', url: `/task/${vent.id}` }),
     ]);
@@ -147,6 +146,21 @@ describe('tasks', () => {
     expect(again.status).toBe(429);
     env.setNow(new Date(NOW.getTime() + 11 * 60_000));
     expect((await env.owner.post(`/api/tasks/${vent.id}/poke`, { userId: partnerId })).status).toBe(200);
+  });
+
+  it('holds a poke until the end of quiet hours and says when it will arrive', async () => {
+    await partner.post('/api/push/subscribe', {
+      endpoint: 'https://push.example/sam',
+      keys: { p256dh: 'key', auth: 'auth' },
+    });
+    const task = await env.owner.post('/api/tasks', { title: 'Take out the recycling' });
+    env.setNow(new Date('2026-10-23T03:00:00Z')); // 23:00 in Toronto
+    const poke = await env.owner.post(`/api/tasks/${task.body.id}/poke`, { userId: partnerId });
+    expect(poke.body).toEqual({ notificationsOn: true, heldUntil: '2026-10-23T11:00:00.000Z' });
+    expect(env.push.sent).toHaveLength(0);
+    env.setNow(new Date('2026-10-23T11:05:00Z'));
+    await env.ctx.notifier.dispatch();
+    expect(env.push.sent).toHaveLength(1);
   });
 
   it('refuses pokes about private tasks, to yourself or to strangers', async () => {
@@ -157,7 +171,7 @@ describe('tasks', () => {
     expect((await env.owner.post(`/api/tasks/${shared.body.id}/poke`, { userId: meId })).status).toBe(422);
     expect((await env.owner.post(`/api/tasks/${shared.body.id}/poke`, { userId: 'nobody' })).status).toBe(422);
     const partnerPokes = await partner.post(`/api/tasks/${shared.body.id}/poke`, { userId: meId });
-    expect(partnerPokes.body).toEqual({ notificationsOn: false });
+    expect(partnerPokes.body).toEqual({ notificationsOn: false, heldUntil: null });
   });
 
   it('rejects assigning to someone outside the household', async () => {
