@@ -1,0 +1,5 @@
+{
+  "permissions": {
+    "allow": ["Bash(env -u CLOUDSDK_AUTH_ACCESS_TOKEN gcloud run deploy household-os:*)"]
+  }
+}
