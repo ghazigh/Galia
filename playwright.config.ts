@@ -20,7 +20,8 @@ export default defineConfig({
     hasTouch: true,
     timezoneId: 'America/Toronto',
     trace: 'retain-on-failure',
-    launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined },
+    // Software WebGL (SwiftShader) so the 3D house renders on GPU-less CI machines.
+    launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH || undefined, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] },
   },
   webServer: {
     command: 'node scripts/e2e-server.mjs',

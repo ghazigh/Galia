@@ -1,7 +1,8 @@
 import type { Ymd } from '@shared/dates';
 import type { Bootstrap, Me, Member, Task, ZoneId } from '@shared/types';
 import { zoneName } from '@shared/zones';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { setSkyTimeZone } from '../lib/daylight';
 import { useBootstrap, useTasks } from '../lib/queries';
 import { useToday } from '../lib/today';
 import type { TaskCreateInput } from '@shared/schemas';
@@ -24,6 +25,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const bootstrap = useBootstrap();
   const { data: tasks, isLoading } = useTasks();
   const today = useToday(bootstrap.household.timeZone);
+  // The live sky (and the "follow the sun" theme) follows the household's time zone.
+  useEffect(() => {
+    setSkyTimeZone(bootstrap.household.timeZone);
+    return () => setSkyTimeZone(null);
+  }, [bootstrap.household.timeZone]);
 
   const value = useMemo<AppData>(() => {
     const byId = new Map(bootstrap.members.map((m) => [m.id, m]));

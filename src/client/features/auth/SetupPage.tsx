@@ -7,10 +7,13 @@ import { ArrowLeft, ArrowRight, Check, Flame, Sparkles } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { Button, Card, cx, Field, Switch, TextInput } from '../../components/ui';
-import { HouseView } from '../../house/HouseView';
 import { api, errorMessage } from '../../lib/api';
+import { useDaylight } from '../../lib/daylight';
+import { usePrefs } from '../../lib/prefs';
 import { setBootstrap } from '../../lib/queries';
-import { useDarkMode } from '../../lib/theme';
+import { usePrefersReducedMotion } from '../../lib/theme';
+import { HouseStage } from '../../scene/HouseStage';
+import { EXTERIOR } from '../../scene/layout';
 import { AuthLayout } from './AuthLayout';
 
 const STEPS = ['welcome', 'home', 'plan', 'account'] as const;
@@ -26,7 +29,9 @@ function detectTimeZone(): string {
 
 export function SetupPage() {
   const qc = useQueryClient();
-  const dark = useDarkMode();
+  const daylight = useDaylight();
+  const prefs = usePrefs();
+  const reducedMotion = usePrefersReducedMotion();
   const [step, setStep] = useState<Step>('welcome');
   const [direction, setDirection] = useState(1);
   const [form, setForm] = useState<SetupInput>({
@@ -77,7 +82,7 @@ export function SetupPage() {
     <AuthLayout wide>
       <div className="mb-6 flex justify-center gap-1.5" aria-hidden>
         {STEPS.map((s, i) => (
-          <span key={s} className={cx('h-1.5 rounded-full transition-all duration-300', i <= index ? 'w-6 bg-accent' : 'w-1.5 bg-line-strong')} />
+          <span key={s} className={cx('h-1 rounded-full transition-all duration-300', i <= index ? 'w-6 bg-ink' : 'w-1.5 bg-line-strong')} />
         ))}
       </div>
       <AnimatePresence mode="wait" custom={direction} initial={false}>
@@ -91,10 +96,27 @@ export function SetupPage() {
         >
           {step === 'welcome' && (
             <div className="text-center">
-              <div className="mx-auto aspect-square w-full max-w-sm">
-                <HouseView className="h-full w-full" summaries={{}} selectedZone={null} dark={dark} pins={false} zoneLabel={(z) => zoneName(z)} />
+              <div className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-[28px] border border-line">
+                <HouseStage
+                  className="absolute inset-0"
+                  summaries={{}}
+                  view={EXTERIOR}
+                  selectedZone={null}
+                  highlightFixture={null}
+                  zoneLabel={(z) => zoneName(z)}
+                  daylight={daylight}
+                  facing={prefs.facing}
+                  quality={prefs.quality}
+                  showLabels={false}
+                  autoRotate
+                  active
+                  reducedMotion={reducedMotion}
+                />
+                <p className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent px-4 pt-10 pb-3 text-[12px] font-medium text-white/80">
+                  Live sky over {daylight.location.label} · drag to look around
+                </p>
               </div>
-              <h1 className="mt-2 font-display text-[30px] leading-tight font-semibold tracking-tight text-ink">
+              <h1 className="mt-6 font-display text-[30px] leading-tight font-semibold tracking-[-0.02em] text-ink">
                 Your home, at a glance
               </h1>
               <p className="mx-auto mt-2 max-w-sm text-[15px] text-ink-2">
@@ -109,7 +131,7 @@ export function SetupPage() {
 
           {step === 'home' && (
             <div>
-              <h1 className="font-display text-[26px] font-semibold tracking-tight text-ink">Your home</h1>
+              <h1 className="font-display text-[26px] font-semibold tracking-[-0.02em] text-ink">Your home</h1>
               <p className="mt-1 text-[15px] text-ink-2">
                 The house map is set up for your three levels: garage and mechanical room below, living room, entry and
                 kitchen on the ground floor, three bedrooms and a bathroom upstairs, plus the backyard.
@@ -133,7 +155,7 @@ export function SetupPage() {
 
           {step === 'plan' && (
             <div>
-              <h1 className="font-display text-[26px] font-semibold tracking-tight text-ink">Your maintenance plan</h1>
+              <h1 className="font-display text-[26px] font-semibold tracking-[-0.02em] text-ink">Your maintenance plan</h1>
               <p className="mt-1 text-[15px] text-ink-2">
                 Built by home-maintenance experts for your house — staggered so nothing lands all at once. You can change
                 any of it later.
@@ -194,7 +216,7 @@ export function SetupPage() {
                 void submit();
               }}
             >
-              <h1 className="font-display text-[26px] font-semibold tracking-tight text-ink">Your account</h1>
+              <h1 className="font-display text-[26px] font-semibold tracking-[-0.02em] text-ink">Your account</h1>
               <p className="mt-1 text-[15px] text-ink-2">You'll invite your partner from Settings once you're in.</p>
               <div className="mt-6 space-y-4">
                 <Field label="Your name">

@@ -1,78 +1,84 @@
 @import 'tailwindcss';
 
+/* `dark:` follows the app's theme (Settings → Appearance), not just the system setting. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* Dark is the default look; [data-theme='light'] below swaps the palette. */
 @theme {
   --font-sans:
-    ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, sans-serif;
+    'Inter Variable', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   --font-display:
-    ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue',
-    Arial, sans-serif;
+    'Inter Variable', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
 
-  --color-canvas: #f4f1ea;
-  --color-surface: #ffffff;
-  --color-surface-2: #faf8f4;
-  --color-sunken: #ece8df;
-  --color-line: #e7e2d8;
-  --color-line-strong: #d8d1c4;
-  --color-ink: #1d1c1a;
-  --color-ink-2: #5c5750;
-  --color-ink-3: #938d83;
-  --color-accent: #5b5bd6;
-  --color-accent-strong: #4a4ac4;
-  --color-accent-soft: #ecebfb;
+  --color-canvas: #0d0e10;
+  --color-surface: #16171a;
+  --color-surface-2: #1d1e22;
+  --color-elevated: #25262b;
+  --color-sunken: #222327;
+  --color-line: #232428;
+  --color-line-strong: #34353b;
+  --color-ink: #f4f4f5;
+  --color-ink-2: #a2a3a9;
+  --color-ink-3: #6c6d74;
+  --color-accent: #3e6ae1;
+  --color-accent-strong: #5a80ec;
+  --color-accent-ink: #7f9cff;
+  --color-accent-soft: #18213a;
   --color-on-accent: #ffffff;
-  --color-overdue: #e5484d;
-  --color-overdue-soft: #fde9ea;
-  --color-today: #ee7a35;
-  --color-today-soft: #fdeee3;
-  --color-soon: #d9961f;
-  --color-soon-soft: #fbf1dc;
-  --color-ok: #2a9d74;
-  --color-ok-soft: #e1f3ec;
-  --color-fire: #f05a28;
-  --color-fire-soft: #feeae1;
-  --color-quick: #0b8fd6;
-  --color-quick-soft: #e2f2fb;
+  --color-overdue: #ff5a52;
+  --color-overdue-soft: #2b1614;
+  --color-today: #ff9f43;
+  --color-today-soft: #2c1e10;
+  --color-soon: #f2c14e;
+  --color-soon-soft: #2a2412;
+  --color-ok: #3ccf8e;
+  --color-ok-soft: #10261c;
+  --color-fire: #ff7043;
+  --color-fire-soft: #2d1a12;
+  --color-quick: #5ac8fa;
+  --color-quick-soft: #0f2330;
 
-  --shadow-card: 0 1px 2px rgb(29 28 26 / 0.04), 0 10px 30px -14px rgb(29 28 26 / 0.16);
-  --shadow-float: 0 2px 6px rgb(29 28 26 / 0.06), 0 24px 48px -16px rgb(29 28 26 / 0.28);
-  --shadow-sheet: 0 -1px 0 rgb(29 28 26 / 0.04), 0 -18px 40px -24px rgb(29 28 26 / 0.3);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 12px 32px -18px rgb(0 0 0 / 0.7);
+  --shadow-float: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 24px 56px -20px rgb(0 0 0 / 0.85);
+  --shadow-sheet: 0 -1px 0 rgb(255 255 255 / 0.05), 0 -24px 48px -24px rgb(0 0 0 / 0.8);
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-tesla: cubic-bezier(0.5, 0, 0, 0.75);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-canvas: #0e1117;
-    --color-surface: #161a22;
-    --color-surface-2: #1b2029;
-    --color-sunken: #12161d;
-    --color-line: #252b37;
-    --color-line-strong: #323a49;
-    --color-ink: #eceef3;
-    --color-ink-2: #a5abb8;
-    --color-ink-3: #707786;
-    --color-accent: #8e90ff;
-    --color-accent-strong: #a3a5ff;
-    --color-accent-soft: #23264a;
-    --color-on-accent: #0e1117;
-    --color-overdue: #ff6369;
-    --color-overdue-soft: #3a1d22;
-    --color-today: #ff9651;
-    --color-today-soft: #3a2619;
-    --color-soon: #f2b84b;
-    --color-soon-soft: #362b17;
-    --color-ok: #46d19b;
-    --color-ok-soft: #15322a;
-    --color-fire: #ff7a45;
-    --color-fire-soft: #3b2117;
-    --color-quick: #4cb8f5;
-    --color-quick-soft: #13283a;
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 30px -14px rgb(0 0 0 / 0.6);
-    --shadow-float: 0 2px 6px rgb(0 0 0 / 0.35), 0 24px 48px -16px rgb(0 0 0 / 0.7);
-    --shadow-sheet: 0 -1px 0 rgb(255 255 255 / 0.04), 0 -18px 40px -24px rgb(0 0 0 / 0.8);
-    color-scheme: dark;
-  }
+:root[data-theme='light'] {
+  --color-canvas: #f4f4f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #f6f6f7;
+  --color-elevated: #ffffff;
+  --color-sunken: #ececee;
+  --color-line: #e5e5e8;
+  --color-line-strong: #d3d3d8;
+  --color-ink: #171a20;
+  --color-ink-2: #5c5e62;
+  --color-ink-3: #8d8e93;
+  --color-accent: #3e6ae1;
+  --color-accent-strong: #3457c7;
+  --color-accent-ink: #3457c7;
+  --color-accent-soft: #e9eefc;
+  --color-on-accent: #ffffff;
+  --color-overdue: #e0262c;
+  --color-overdue-soft: #fdeceb;
+  --color-today: #e2700d;
+  --color-today-soft: #fdf0e4;
+  --color-soon: #b98700;
+  --color-soon-soft: #fbf3dc;
+  --color-ok: #12955a;
+  --color-ok-soft: #e3f5ec;
+  --color-fire: #e5531a;
+  --color-fire-soft: #fdece4;
+  --color-quick: #0a7fc0;
+  --color-quick-soft: #e2f1fa;
+  --shadow-card: 0 1px 2px rgb(23 26 32 / 0.04), 0 12px 32px -18px rgb(23 26 32 / 0.18);
+  --shadow-float: 0 2px 6px rgb(23 26 32 / 0.06), 0 24px 56px -20px rgb(23 26 32 / 0.3);
+  --shadow-sheet: 0 -1px 0 rgb(23 26 32 / 0.04), 0 -24px 48px -24px rgb(23 26 32 / 0.25);
 }
 
 @layer base {
@@ -84,7 +90,8 @@
   body {
     @apply bg-canvas text-ink font-sans antialiased;
     overscroll-behavior-y: none;
-    font-feature-settings: 'ss01', 'cv11';
+    font-feature-settings: 'cv05', 'ss03';
+    letter-spacing: -0.006em;
   }
   button,
   [role='button'] {
@@ -92,13 +99,16 @@
     user-select: none;
   }
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-accent-ink);
     outline-offset: 2px;
   }
   input,
   textarea,
   select {
     font-size: 16px; /* prevents iOS zoom on focus */
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 45%, transparent);
   }
 }
 
@@ -121,7 +131,88 @@
   }
 }
 
-/* ── Isometric house ────────────────────────────────────────────────────────────────────── */
+/* Small uppercase label with generous tracking — the "SOLAR · 0.9 kW" look. */
+@utility eyebrow {
+  font-size: 10.5px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@utility glass {
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+
+/* ── 3D scene overlay ───────────────────────────────────────────────────────────────────── */
+
+.scene-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+.scene-label-hit {
+  pointer-events: auto;
+}
+/* Labels without room above their anchor hang below it instead. */
+.scene-label[data-flip='1'] [data-leader] {
+  bottom: auto !important;
+  top: 3px;
+}
+.scene-label[data-flip='1'] [data-text] {
+  bottom: auto !important;
+  top: calc(var(--L) + 2px);
+}
+.scene-dot {
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
+}
+.scene-dot-live {
+  animation: scene-dot 2.2s ease-out infinite;
+}
+@keyframes scene-dot {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px color-mix(in srgb, currentColor 0%, transparent);
+  }
+}
+
+/* Marker over a highlighted fixture (also used by the illustrated fallback house). */
+.house-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: house-ring 1.8s ease-in-out infinite;
+}
+@keyframes house-ring {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+.scene-ping {
+  animation: scene-ping 1.8s var(--ease-out-soft) infinite;
+}
+@keyframes scene-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.3);
+    opacity: 0;
+  }
+}
+
+/* ── Illustrated house (mini maps and the no-WebGL fallback) ────────────────────────────── */
 
 .house-room:focus {
   outline: none;
@@ -172,21 +263,6 @@
   }
 }
 
-.house-ring {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: house-ring 1.8s ease-in-out infinite;
-}
-@keyframes house-ring {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.18);
-  }
-}
-
 .house-outline {
   stroke-dasharray: 0.5 0.18;
   animation: house-dash 6s linear infinite;
@@ -212,7 +288,9 @@
   .house-pulse-strong,
   .house-ping,
   .house-ring,
-  .house-outline {
+  .house-outline,
+  .scene-dot-live,
+  .scene-ping {
     animation: none;
   }
 }

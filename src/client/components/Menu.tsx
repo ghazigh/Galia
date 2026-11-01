@@ -53,7 +53,7 @@ export function Menu({
             exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.14 }}
             className={cx(
-              'absolute z-30 min-w-52 overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-float',
+              'absolute z-30 min-w-52 overflow-hidden rounded-2xl border border-line-strong bg-elevated p-1.5 shadow-float',
               align === 'right' ? 'right-0' : 'left-0',
               side === 'top' ? 'bottom-full mb-2 origin-bottom' : 'top-full mt-2 origin-top',
             )}

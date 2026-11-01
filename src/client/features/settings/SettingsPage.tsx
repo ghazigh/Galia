@@ -5,34 +5,44 @@ import { ZONES } from '@shared/zones';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BellRing,
+  Box,
   Check,
+  Compass,
   Copy,
   House,
+  LocateFixed,
   LogOut,
+  Moon,
   Plus,
+  RotateCw,
   Send,
   Share,
   Smartphone,
   Sparkles,
   SquarePlus,
+  Tags,
   Trash2,
   UserPlus,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAppData, useUi } from '../../app/context';
 import { useToast } from '../../components/Toast';
-import { Avatar, Button, Card, cx, Switch, TextInput } from '../../components/ui';
+import { PageHeader } from '../../components/nav';
+import { Avatar, Button, Card, cx, Segmented, Switch, TextInput } from '../../components/ui';
+import { formatClock, useDaylight } from '../../lib/daylight';
+import { setPrefs, usePrefs, type SceneQuality, type ThemeMode } from '../../lib/prefs';
+import { useDeviceLocation } from '../daylight/DaylightSheet';
 import { api, errorMessage } from '../../lib/api';
 import { currentSubscription, disablePush, enablePush } from '../../lib/push';
 import { isIOS, isStandalone, pushSupport } from '../../lib/pwa';
 import { keys, setBootstrap } from '../../lib/queries';
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Section({ title, description, children, id }: { title: string; description?: string; children: ReactNode; id?: string }) {
   return (
-    <section className="mt-8">
-      <h2 className="px-1 font-display text-[18px] font-semibold tracking-tight text-ink">{title}</h2>
-      {description && <p className="px-1 text-[13px] text-ink-3">{description}</p>}
-      <Card className="mt-3 divide-y divide-line/70 px-4">{children}</Card>
+    <section className="mt-8 scroll-mt-24" id={id}>
+      <h2 className="eyebrow px-1 text-ink-3">{title}</h2>
+      {description && <p className="mt-1 px-1 text-[13px] text-ink-3">{description}</p>}
+      <Card className="mt-3 divide-y divide-line px-4">{children}</Card>
     </section>
   );
 }
@@ -40,9 +50,9 @@ function Section({ title, description, children }: { title: string; description?
 function Row({ title, detail, children, icon }: { title: string; detail?: ReactNode; children?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="flex items-center gap-3 py-3.5">
-      {icon && <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-sunken text-ink-2">{icon}</span>}
+      {icon && <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sunken text-ink-2">{icon}</span>}
       <div className="min-w-0 flex-1">
-        <p className="text-[14.5px] font-medium text-ink">{title}</p>
+        <p className="text-[15px] font-medium text-ink">{title}</p>
         {detail && <div className="text-[12.5px] text-ink-3">{detail}</div>}
       </div>
       {children}
@@ -58,7 +68,7 @@ function TimeInput({ value, onChange, label, disabled }: { value: string; onChan
       disabled={disabled}
       onChange={(e) => e.target.value && onChange(e.target.value)}
       aria-label={label}
-      className="h-9 rounded-xl border border-line bg-surface-2 px-2 text-[14px] font-semibold text-ink tabular outline-none focus:border-accent disabled:opacity-40"
+      className="h-9 rounded-xl border border-transparent bg-sunken px-2 text-[14px] font-medium text-ink tabular outline-none focus:border-accent disabled:opacity-40"
     />
   );
 }
@@ -167,7 +177,7 @@ function DeviceNotifications() {
 
 function WindowEditor({ window: win, onChange, onRemove }: { window: QuickWinWindow; onChange: (w: QuickWinWindow) => void; onRemove: () => void }) {
   return (
-    <div className="rounded-2xl bg-surface-2 p-3">
+    <div className="rounded-2xl bg-sunken/60 p-3">
       <div className="flex items-center gap-2">
         <input
           value={win.label}
@@ -277,12 +287,20 @@ function NotificationPreferences() {
       <Row title="When someone assigns me a task">
         <Switch checked={prefs.assignments.enabled} onChange={(enabled) => update({ ...prefs, assignments: { enabled } })} label="Assignment notifications" />
       </Row>
-      <Row title="Quiet hours" detail="Assignments wait until morning">
-        <TimeInput value={prefs.quietHours.start} disabled={!prefs.quietHours.enabled} onChange={(start) => update({ ...prefs, quietHours: { ...prefs.quietHours, start } })} label="Quiet hours start" />
-        <span className="text-ink-3">–</span>
-        <TimeInput value={prefs.quietHours.end} disabled={!prefs.quietHours.enabled} onChange={(end) => update({ ...prefs, quietHours: { ...prefs.quietHours, end } })} label="Quiet hours end" />
-        <Switch checked={prefs.quietHours.enabled} onChange={(enabled) => update({ ...prefs, quietHours: { ...prefs.quietHours, enabled } })} label="Quiet hours" />
-      </Row>
+      <div className="py-3.5">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-medium text-ink">Quiet hours</p>
+            <p className="text-[12.5px] text-ink-3">Assignments wait until morning</p>
+          </div>
+          <Switch checked={prefs.quietHours.enabled} onChange={(enabled) => update({ ...prefs, quietHours: { ...prefs.quietHours, enabled } })} label="Quiet hours" />
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <TimeInput value={prefs.quietHours.start} disabled={!prefs.quietHours.enabled} onChange={(start) => update({ ...prefs, quietHours: { ...prefs.quietHours, start } })} label="Quiet hours start" />
+          <span className="text-ink-3">to</span>
+          <TimeInput value={prefs.quietHours.end} disabled={!prefs.quietHours.enabled} onChange={(end) => update({ ...prefs, quietHours: { ...prefs.quietHours, end } })} label="Quiet hours end" />
+        </div>
+      </div>
     </>
   );
 }
@@ -322,7 +340,7 @@ function Household() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => name.trim() && name !== bootstrap.household.name && void patch({ name: name.trim() })}
-          className="h-9 w-44 py-1.5 text-right"
+          className="h-9 w-36 py-1.5 text-right"
           aria-label="Home name"
         />
       </Row>
@@ -330,7 +348,7 @@ function Household() {
         <select
           value={bootstrap.household.timeZone}
           onChange={(e) => void patch({ timeZone: e.target.value })}
-          className="h-9 max-w-44 rounded-xl border border-line bg-surface-2 px-2 text-[13px] text-ink outline-none"
+          className="h-9 max-w-44 rounded-xl bg-sunken px-2 text-[13px] text-ink outline-none"
           aria-label="Time zone"
         >
           {timeZones.map((tz) => (
@@ -406,7 +424,7 @@ function Rooms() {
             defaultValue={names[zone.id] ?? ''}
             placeholder="Rename…"
             onBlur={(e) => (e.target.value.trim() !== (names[zone.id] ?? '') ? void save(zone.id, e.target.value) : undefined)}
-            className="h-9 w-32 rounded-xl border border-line bg-surface-2 px-2.5 text-right text-[13px] text-ink outline-none placeholder:text-ink-3 focus:border-accent"
+            className="h-9 w-32 rounded-xl border border-transparent bg-sunken px-2.5 text-right text-[13px] text-ink outline-none placeholder:text-ink-3 focus:border-accent"
             aria-label={`Rename ${zone.name}`}
           />
         </Row>
@@ -439,6 +457,110 @@ function Install() {
   );
 }
 
+const THEMES: { value: ThemeMode; label: string }[] = [
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+  { value: 'sun', label: 'Sun' },
+  { value: 'system', label: 'System' },
+];
+
+const QUALITY: { value: SceneQuality; label: string }[] = [
+  { value: 'saver', label: 'Saver' },
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'high', label: 'High' },
+];
+
+const FACING = ['North', 'North-east', 'East', 'South-east', 'South', 'South-west', 'West', 'North-west'];
+
+function Appearance() {
+  const prefs = usePrefs();
+  const daylight = useDaylight();
+  const hint: Record<ThemeMode, string> = {
+    dark: 'Always dark, like the car.',
+    light: 'Always light.',
+    sun: `Follows the sun at home — dark from sunset (${formatClock(daylight.today.sunset, daylight.timeZone)}) to sunrise.`,
+    system: 'Follows this device’s setting.',
+  };
+  return (
+    <div className="py-3.5">
+      <Segmented value={prefs.theme} onChange={(theme) => setPrefs({ theme })} options={THEMES} />
+      <p className="mt-2 px-1 text-[12.5px] text-ink-3">{hint[prefs.theme]}</p>
+    </div>
+  );
+}
+
+function HouseScene3D() {
+  const prefs = usePrefs();
+  return (
+    <>
+      <div className="py-3.5">
+        <div className="flex items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sunken text-ink-2">
+            <Box className="size-[18px]" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-medium text-ink">Graphics</p>
+            <p className="text-[12.5px] text-ink-3">Saver turns off shadows and renders at lower resolution.</p>
+          </div>
+        </div>
+        <Segmented className="mt-3" value={prefs.quality} onChange={(quality) => setPrefs({ quality })} options={QUALITY} />
+      </div>
+      <Row icon={<Tags className="size-[18px]" />} title="Labels" detail="Status labels pointing at floors, rooms and fixtures">
+        <Switch checked={prefs.labels} onChange={(labels) => setPrefs({ labels })} label="Labels" />
+      </Row>
+      <Row icon={<RotateCw className="size-[18px]" />} title="Slowly orbit when idle" detail="The house turns gently on the home screen">
+        <Switch checked={prefs.autoRotate} onChange={(autoRotate) => setPrefs({ autoRotate })} label="Slowly orbit when idle" />
+      </Row>
+      <Row icon={<Compass className="size-[18px]" />} title="Front of the house faces" detail="Places the sun and moon around the house correctly">
+        <select
+          value={prefs.facing === null ? 'auto' : String(prefs.facing)}
+          onChange={(e) => setPrefs({ facing: e.target.value === 'auto' ? null : Number(e.target.value) })}
+          className="h-9 max-w-36 rounded-xl bg-sunken px-2 text-[13px] text-ink outline-none"
+          aria-label="Front of the house faces"
+        >
+          <option value="auto">Automatic</option>
+          {FACING.map((name, i) => (
+            <option key={name} value={i * 45}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </Row>
+    </>
+  );
+}
+
+function DaylightLocation() {
+  const prefs = usePrefs();
+  const daylight = useDaylight();
+  const location = useDeviceLocation();
+  const { location: where, today, timeZone } = daylight;
+  return (
+    <>
+      <Row
+        icon={<Moon className="size-[18px]" />}
+        title={`Sunrise ${formatClock(today.sunrise, timeZone)} · Sunset ${formatClock(today.sunset, timeZone)}`}
+        detail={where.source === 'device' ? `This device · ${where.lat.toFixed(2)}, ${where.lng.toFixed(2)}` : `${where.label}, from your time zone`}
+      />
+      <Row
+        icon={<LocateFixed className="size-[18px]" />}
+        title="Precise location"
+        detail="Uses this device’s position for the sky. It stays on this device."
+      >
+        {prefs.location.mode === 'device' ? (
+          <Button size="sm" variant="ghost" onClick={() => setPrefs({ location: { mode: 'auto' } })}>
+            Turn off
+          </Button>
+        ) : (
+          <Button size="sm" variant="soft" loading={location.busy} onClick={location.request}>
+            Use
+          </Button>
+        )}
+      </Row>
+    </>
+  );
+}
+
 export function SettingsPage() {
   const { me, bootstrap } = useAppData();
   const { setExpertOpen } = useUi();
@@ -447,8 +569,8 @@ export function SettingsPage() {
   const [name, setName] = useState(me.name);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 pt-[max(env(safe-area-inset-top),20px)] pb-12 lg:px-8 lg:pt-10">
-      <h1 className="px-1 font-display text-[30px] font-semibold tracking-tight text-ink">Settings</h1>
+    <div className="mx-auto w-full max-w-2xl px-4 pb-16 lg:px-8">
+      <PageHeader title="Settings" />
 
       <Card className="mt-4 flex items-center gap-4 p-4">
         <Avatar member={me} size={52} />
@@ -457,7 +579,7 @@ export function SettingsPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onBlur={() => name.trim() && name !== me.name && void save({ name: name.trim() })}
-            className="w-full bg-transparent font-display text-[19px] font-semibold tracking-tight text-ink outline-none"
+            className="w-full bg-transparent font-display text-[19px] font-semibold tracking-[-0.015em] text-ink outline-none"
             aria-label="Your name"
           />
           <p className="truncate text-[13px] text-ink-3">{me.email}</p>
@@ -476,12 +598,24 @@ export function SettingsPage() {
         </Button>
       </Card>
 
+      <Section title="Appearance">
+        <Appearance />
+      </Section>
+
+      <Section title="3D house" description="How the live model on the home screen looks and behaves on this device.">
+        <HouseScene3D />
+      </Section>
+
+      <Section title="Daylight" description="The sky over the house follows the real sun and moon.">
+        <DaylightLocation />
+      </Section>
+
       <Section title="Notifications" description="Reminders arrive as push notifications on your phone.">
         <DeviceNotifications />
         <NotificationPreferences />
       </Section>
 
-      <Section title="Household">
+      <Section title="Household" id="household">
         <Household />
       </Section>
 

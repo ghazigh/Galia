@@ -1,26 +1,50 @@
 # Household OS
 
-Home maintenance and shared to-dos for two, built around an interactive isometric map of the house.
-An installable web app (PWA) for iPhone, with push reminders, an expert-seeded maintenance plan for a
+Home maintenance and shared to-dos for two, built around a live 3D model of the house under the real
+sky. An installable web app (PWA) for iPhone, with push reminders, an expert-seeded maintenance plan for a
 newly bought house, and a prioritized to-do list designed for short pockets of free time.
 
-![Household OS on iPhone: house map, room zoom, task how-to, Focus, night mode](docs/screenshots/app.png)
+The interface takes its cues from the Tesla app: a dark, minimal home screen where the house is the hero,
+status labels with leader lines pointing at the parts that need you, and a short list of rows underneath.
+
+![Household OS on iPhone: golden hour, kitchen cutaway with fixture labels, all floors at night, the Daylight panel, Focus](docs/screenshots/app.png)
 
 ## What's in v1
 
-**The house is the interface.** The home screen is an exploded "dollhouse" of the actual house, drawn
-in code as isometric SVG from its floor plans (22 × 33 ft): basement (garage, family room, laundry,
+**The house is the interface.** The home screen is a real-time 3D model of the actual house, built in
+code with three.js from its floor plans (22 × 33 ft): basement (garage, family room, laundry,
 mechanical room), ground floor (side entry, open living / dining / kitchen with the island, powder
 room), upper floor (three bedrooms, primary walk-in, bathroom with tub and separate shower), the roof
 and the backyard.
 
-- Rooms glow by status: red for overdue, orange for today, amber for coming up, green when up to date.
-  Pins show counts, with a flame badge for overdue fire-safety work.
-- Tap a room → the camera zooms in, the storey's walls grow, and the list shows that room's tasks.
-- Tap a task → its room lights up and its fixture pulses (the dryer duct, the dishwasher, the heat
-  pump's outdoor unit, the gutters, every smoke alarm…). Task details show the same live mini-map.
-- A floor rail (Roof · +1 · 0 · −1 · Yard) focuses a storey; dark mode switches to a night palette
-  with lit windows.
+- **Drag to orbit, pinch or scroll to zoom**, two fingers to pan; double-tap (or the ⌖ button) resets
+  the view. The camera flies smoothly between views and is kept close to the house.
+- **Tesla-style labels.** Floors, the roof and the yard carry labels with leader lines ("BASEMENT · 1
+  overdue"); outside, only what needs attention is labelled. Inside a room, its fixtures get their own
+  labels (Dishwasher · Nov 8, Range hood · Nov 15) and tapping one selects its task.
+- **Look inside.** The rail (House · Floors · Roof · +1 · 0 · −1 · Yard) or a tap on the house opens a
+  storey: the ones above lift away, and whichever walls face the camera drop so the rooms read from any
+  angle — orbit around and the cutaway follows. *Floors* stacks every storey like a dollhouse.
+- Rooms glow by status (red overdue — pulsing, orange today, amber this week, green up to date). Tap a
+  room → the camera moves in and the panel lists its tasks; tap a task → its fixture pulses with a
+  locator ring (the dryer duct, the dishwasher, the heat pump's outdoor unit, the gutters, every
+  smoke alarm…).
+- A draggable bottom panel (quick actions · needs attention · Focus, Maintenance, To-dos, House health,
+  Daylight, Settings) slides over the scene; the house stays centered in whatever space is left. Pages
+  push over the home screen like a native navigation stack, and the scene pauses while it's covered.
+
+**A live sky.** The sky over the house is computed for your home, right now:
+
+- The sun and moon are placed with real astronomy (SunCalc/Meeus formulas, unit-tested against
+  published sunrise times and moon phases) from the household's time zone — or, if you allow it, this
+  device's precise location (it never leaves the device).
+- Daylight drives everything: the sky gradient, sunset glow and drifting clouds, stars at night, the
+  moon's actual phase and tilt, sun and moon shadows, and the windows, porch lights and rooms warming
+  up at dusk.
+- **Daylight** panel: sunrise, sunset, golden hour, dusk, day length and moon phase on a 24-hour sun
+  chart, plus **Preview the day in 3D** — a scrubber (or time-lapse) that runs the whole day over the
+  house.
+- Appearance can be Dark (default), Light, System, or **Sun**: dark from sunset to sunrise at home.
 
 **Expert-seeded maintenance** — 30 items in three groups you choose at setup
 ([full list](docs/maintenance-plan.md)): the 13 from the PRD (dryer vent, lint trap, dishwasher filter
@@ -63,8 +87,9 @@ GFCI, bath fan, caulking, washer hoses, radon…) and a 4-item new-home checklis
    are per person and editable. Overdue safety items repeat every 3 days, never daily.
 2. **"I have 10 minutes" filter.** Yes — Focus has 5/15/30/60-minute filters using each task's
    estimate (quick wins without one count as 10 minutes).
-3. **Isometric detail in v1.** Fully illustrated rooms with ~20 linked fixtures, per-room status, storey
-   focus and room zoom. Rooms can be renamed (e.g. "Bedroom 3" → "Office").
+3. **House detail in v1.** A furnished 3D model with ~20 linked fixtures, per-room status, storey
+   cutaways and room zoom (with the illustrated isometric house as fallback). Rooms can be renamed
+   (e.g. "Bedroom 3" → "Office").
 
 ## Run it locally
 
@@ -157,6 +182,18 @@ with `AI_PROVIDER=foundry ANTHROPIC_FOUNDRY_RESOURCE=… ./deploy/gcp/deploy.sh`
 
 See [.env.example](.env.example) for the full list.
 
+## 3D, performance and fallbacks
+
+- The 3D engine (three.js, React Three Fiber, camera-controls) is a separate chunk (~260 KB gzipped)
+  loaded only when the house is on screen and precached for offline use. Until it arrives — or on a
+  device without WebGL — the same sky is drawn as a gradient behind the illustrated SVG house, which
+  keeps every room tappable.
+- Settings → 3D house: graphics quality (Saver turns off shadows and renders at 1×), labels, a slow
+  idle orbit, and which way the front of the house faces (by default away from the midday sun, so the
+  default view looks toward the sun and moon).
+- Rendering stops whenever the home screen is covered by a page, the panel is fully expanded, or the
+  app is in the background. Reduced-motion turns off pulsing, drifting clouds and camera flights.
+
 ## How it's built
 
 ```mermaid
@@ -175,13 +212,16 @@ flowchart LR
   sessions for the installed app), same-origin checks, Web Push outbox with dedupe keys, idempotent
   cron, Cloud Storage persistence, AI providers.
 - **`src/client`** — React 19, Vite, Tailwind CSS v4, Motion, TanStack Query (optimistic updates),
-  React Router, Workbox service worker. The house (`src/client/house`) is hand-built isometric SVG —
-  no image assets — with animated cameras and walls.
+  React Router, Workbox service worker, Inter. The 3D house (`src/client/scene`) is React Three Fiber:
+  a layout model, furniture as data, a sky shader, and an HTML label layer projected every frame. The
+  illustrated isometric SVG house (`src/client/house`) remains for mini-maps and as the fallback.
+- **`src/shared/astro.ts`** — sun and moon positions, sun times, moon illumination and phase names;
+  `src/shared/timezones.ts` maps every IANA time zone to its principal city (generated from tzdata).
 
 ```
-src/shared     domain logic + tests          src/client/house     isometric renderer
-src/server     API, persistence, push, AI    src/client/features  pages and sheets
-e2e/           Playwright journeys           deploy/gcp           setup + deploy scripts
+src/shared     domain logic, astronomy + tests   src/client/scene     3D house, sky, labels
+src/server     API, persistence, push, AI        src/client/house     isometric SVG renderer
+e2e/           Playwright journeys               src/client/features  pages and sheets
 ```
 
 ## Scripts
@@ -195,8 +235,11 @@ e2e/           Playwright journeys           deploy/gcp           setup + deploy
 | `npm run typecheck`, `npm run lint` | TypeScript and ESLint |
 | `npm run vapid` | Generate Web Push keys |
 | `npm run icons` | Re-render app icons |
+| `npm run timezones` | Regenerate the time-zone → coordinates table from tzdata |
 
-In development, `/__house` is a playground for the house renderer (focus states, fixtures, dark mode).
+In development, `/__scene` is a playground for the 3D house (`?view=ground&zone=kitchen&fixture=dishwasher&hour=17.5`)
+and `/__house` one for the illustrated house. The end-to-end suite renders WebGL in software; if your
+Playwright browsers don't match the pinned version, point it at any Chromium with `PW_CHROMIUM_PATH`.
 
 ## Assumptions to double-check
 
@@ -206,8 +249,12 @@ In development, `/__house` is a playground for the house renderer (focus states,
 - **Northern-hemisphere seasons** (mowing May–Oct, tune-ups April/October, faucets winterized in
   October). Edit the frequency on the task if your climate differs.
 - **Layout from the floor plans.** Rooms, doors and the main fixtures follow the plans; small jogs in
-  the outer walls are straightened. Rooms can be renamed in Settings. The default deploy region is
-  Montréal (`northamerica-northeast1`); change `REGION` as needed.
+  the outer walls are straightened and the exterior (siding, windows, roof) is stylized. Rooms can be
+  renamed in Settings. The default deploy region is Montréal (`northamerica-northeast1`); change
+  `REGION` as needed.
+- **Where the sun is.** Without location access the sky uses your time zone's principal city (Toronto
+  for America/Toronto) and assumes the front of the house faces away from the midday sun. Set the real
+  direction in Settings → 3D house, or allow precise location in the Daylight panel.
 
 ## Next (PRD §10)
 

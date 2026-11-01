@@ -1,20 +1,58 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
+import { useDaylight } from './daylight';
+import { usePrefs, type ThemeMode } from './prefs';
 
-const query = '(prefers-color-scheme: dark)';
+const darkQuery = '(prefers-color-scheme: dark)';
 
-function subscribe(onChange: () => void) {
-  const media = window.matchMedia(query);
-  media.addEventListener('change', onChange);
-  return () => media.removeEventListener('change', onChange);
+function useSystemDark(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const media = window.matchMedia(darkQuery);
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    },
+    () => window.matchMedia(darkQuery).matches,
+    () => true,
+  );
 }
 
-/** Follows the system light/dark setting. */
+export type ResolvedTheme = 'dark' | 'light';
+
+export function resolveTheme(mode: ThemeMode, systemDark: boolean, sunDown: boolean): ResolvedTheme {
+  if (mode === 'system') return systemDark ? 'dark' : 'light';
+  if (mode === 'sun') return sunDown ? 'dark' : 'light';
+  return mode;
+}
+
+/** The theme in effect: the user's choice, the system's, or the sun's at the household. */
+export function useResolvedTheme(): ResolvedTheme {
+  const { theme } = usePrefs();
+  const systemDark = useSystemDark();
+  const daylight = useDaylight();
+  // "Follow the sun" switches at sunset and back at sunrise.
+  return resolveTheme(theme, systemDark, daylight.isNight);
+}
+
+/** Whether the dark palette is showing (kept for the illustrated house and charts). */
 export function useDarkMode(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => window.matchMedia(query).matches,
-    () => false,
-  );
+  return useResolvedTheme() === 'dark';
+}
+
+const THEME_COLOR: Record<ResolvedTheme, string> = { dark: '#0d0e10', light: '#f4f4f5' };
+
+/** Applies the resolved theme to the document (data-theme, color-scheme, browser chrome color). */
+export function ThemeController() {
+  const theme = useResolvedTheme();
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+      meta.content = THEME_COLOR[theme];
+      meta.removeAttribute('media');
+    }
+  }, [theme]);
+  return null;
 }
 
 const reducedQuery = '(prefers-reduced-motion: reduce)';

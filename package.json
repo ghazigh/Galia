@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Household OS — home maintenance and shared to-dos for two, built around an interactive isometric house. Installable PWA.",
+  "description": "Household OS \u2014 home maintenance and shared to-dos for two, built around a live 3D model of your house under the real sky. Installable PWA.",
   "engines": {
     "node": ">=22.9"
   },
@@ -24,7 +24,8 @@
     "e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test",
     "vapid": "node scripts/generate-vapid.mjs",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "timezones": "node scripts/generate-timezones.mjs"
   },
   "dependencies": {
     "@anthropic-ai/foundry-sdk": "^1.0.0",
@@ -37,15 +38,19 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@fontsource-variable/inter": "^5.3.0",
     "@playwright/test": "1.56.1",
+    "@react-three/fiber": "^9.8.2",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.104.5",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
     "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^5.2.0",
+    "camera-controls": "^3.1.2",
     "concurrently": "^9.2.1",
     "esbuild": "^0.25.12",
     "eslint": "^10.13.0",
@@ -59,6 +64,7 @@
     "react-dom": "^19.3.1",
     "react-router": "^7.18.4",
     "tailwindcss": "^4.3.3",
+    "three": "^0.186.0",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.72.0",
