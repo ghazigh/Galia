@@ -22,10 +22,10 @@ const priorityEnum = z.enum(PRIORITIES as [Priority, ...Priority[]]);
 const riskEnum = z.enum(RISKS as [Risk, ...Risk[]]);
 const unitEnum = z.enum(['day', 'week', 'month', 'year']);
 
-const HOUSE_PROFILE = `House profile:
-- Level −1 (basement): garage; mechanical room with the central heat pump (heating and cooling), the hot water tank and the laundry (washer, vented dryer)
-- Level 0 (ground floor): entry, living room, kitchen with dishwasher
-- Level +1 (upper floor): three bedrooms, one bathroom with a shower and a bathtub
+const HOUSE_PROFILE = `House profile (22 × 33 ft footprint, three levels):
+- Level −1 (basement): one-car garage at the front with an overhead door; family room; laundry closet (washer, vented dryer); mechanical room with the central heat pump's indoor unit (heating and cooling), the hot water tank, an air exchanger (HRV) and a sump pump
+- Level 0 (ground floor): side entry with a closet, reached by outdoor steps; powder room (toilet and sink); walk-in closet; open-plan living room, dining room and kitchen with an island (sink and dishwasher), fridge and range
+- Level +1 (upper floor): primary bedroom with a walk-in closet, two more bedrooms with closets, bathroom with a bathtub, a separate shower, vanity and toilet
 - Outside: backyard lawn, heat pump outdoor unit; pitched roof with gutters`;
 
 function zoneList(household: Household): string {

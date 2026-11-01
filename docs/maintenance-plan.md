@@ -11,8 +11,8 @@ Heat pump, dryer, dishwasher, hot water tank, garage, lawn, gutters and alarms.
 | Task | Where | How often | First due | Priority | Risks | Time |
 | --- | --- | --- | --- | --- | --- | --- |
 | Test smoke & CO alarms | Whole house | Monthly | day 2 | critical | fire, safety | 10 min |
-| Clean the dryer exhaust vent | Mechanical room | Yearly | day 10 | critical | fire | 60 min |
-| Clean the dryer lint trap | Mechanical room | Weekly | day 1 | normal | fire | 2 min |
+| Clean the dryer exhaust vent | Laundry | Yearly | day 10 | critical | fire | 60 min |
+| Clean the dryer lint trap | Laundry | Weekly | day 1 | normal | fire | 2 min |
 | Clean the dishwasher filter | Kitchen | Monthly | day 7 | normal | — | 10 min |
 | Deep clean the dishwasher | Kitchen | Every 2 months | day 21 | low | water | 30 min |
 | Check the heat pump filter | Mechanical room | Monthly | day 5 | high | air, efficiency | 5 min |
@@ -37,7 +37,9 @@ Extra fire, water-damage and air-quality checks that fit this house.
 | Test GFCI outlets | Whole house | Every 3 months | day 20 | normal | safety | 10 min |
 | Clean the bathroom exhaust fan | Bathroom | Every 6 months | day 35 | normal | air, water | 20 min |
 | Inspect the tub & shower caulking | Bathroom | Every 6 months | day 40 | normal | water | 15 min |
-| Check washer hoses & clean the washer | Mechanical room | Every 3 months | day 25 | normal | water | 20 min |
+| Check washer hoses & clean the washer | Laundry | Every 3 months | day 25 | normal | water | 20 min |
+| Test the sump pump | Mechanical room | Every March & September | day 12 | high | water | 15 min |
+| Clean the air exchanger filters | Mechanical room | Every 2 months | day 18 | normal | air | 20 min |
 | Vacuum the refrigerator coils | Kitchen | Yearly | day 60 | low | efficiency | 20 min |
 | Test the house for radon | Living room | Every 2 years | day 30 | normal | air | 15 min |
 | Check door & window weatherstripping | Whole house | Every October | day 21 | low | efficiency | 30 min |
@@ -76,6 +78,8 @@ One-time tasks for the first month in a newly bought house.
 - **Clean the bathroom exhaust fan** — The fan pulls shower moisture out before it becomes mold and peeling paint. A dust-clogged fan moves a fraction of the air it should.
 - **Inspect the tub & shower caulking** — Cracked or moldy caulk lets water behind the tile and into the ceiling below — expensive, invisible damage.
 - **Check washer hoses & clean the washer** — A burst washing-machine hose can release hundreds of litres an hour. Catch bulges and cracks early and keep the drum fresh.
+- **Test the sump pump** — The sump pump is what keeps groundwater out of the basement during the spring thaw and heavy rain, and it fails silently. Test it before each wet season so you find out in the dry.
+- **Clean the air exchanger filters** — The air exchanger brings in fresh air and pushes out humid, stale air. Clogged filters cut the airflow, which hurts indoor air quality and lets condensation build up on windows in winter.
 - **Vacuum the refrigerator coils** — Dusty condenser coils make the compressor run hot and long, wasting energy and shortening the fridge's life.
 - **Test the house for radon** — Radon is an invisible, odorless soil gas and the leading cause of lung cancer in non-smokers. Testing is the only way to know your level — ideally a 3-month test during the heating season.
 - **Check door & window weatherstripping** — Drafty doors and windows are among the cheapest energy fixes, and they cause cold spots that confuse the thermostat.

@@ -8,9 +8,11 @@ newly bought house, and a prioritized to-do list designed for short pockets of f
 
 ## What's in v1
 
-**The house is the interface.** The home screen is an exploded "dollhouse" of the actual house —
-basement (garage, mechanical room), ground floor (entry, living room, kitchen), upper floor (three
-bedrooms, bathroom), the roof and the backyard — drawn in code as isometric SVG.
+**The house is the interface.** The home screen is an exploded "dollhouse" of the actual house, drawn
+in code as isometric SVG from its floor plans (22 × 33 ft): basement (garage, family room, laundry,
+mechanical room), ground floor (side entry, open living / dining / kitchen with the island, powder
+room), upper floor (three bedrooms, primary walk-in, bathroom with tub and separate shower), the roof
+and the backyard.
 
 - Rooms glow by status: red for overdue, orange for today, amber for coming up, green when up to date.
   Pins show counts, with a flame badge for overdue fire-safety work.
@@ -20,12 +22,12 @@ bedrooms, bathroom), the roof and the backyard — drawn in code as isometric SV
 - A floor rail (Roof · +1 · 0 · −1 · Yard) focuses a storey; dark mode switches to a night palette
   with lit windows.
 
-**Expert-seeded maintenance** — 28 items in three groups you choose at setup
+**Expert-seeded maintenance** — 30 items in three groups you choose at setup
 ([full list](docs/maintenance-plan.md)): the 13 from the PRD (dryer vent, lint trap, dishwasher filter
 and deep clean, heat pump filter check/replacement/outdoor clearance/tune-ups, hot water tank flush,
-garage, lawn, gutters, smoke & CO alarms), 11 inspector-recommended additions for this house
-(winterizing outdoor faucets, range-hood grease, extinguisher, GFCI, bath fan, caulking, washer hoses,
-radon…) and a 4-item new-home checklist (find the water main, rekey locks, label the panel…).
+garage, lawn, gutters, smoke & CO alarms), 13 inspector-recommended additions for this house
+(sump pump test, air exchanger filters, winterizing outdoor faucets, range-hood grease, extinguisher,
+GFCI, bath fan, caulking, washer hoses, radon…) and a 4-item new-home checklist (find the water main, rekey locks, label the panel…).
 
 - Each item has *why it matters*, step-by-step instructions (tick them off), supplies, safety notes and
   a "pro job" flag. Fire-safety items are flagged everywhere.
@@ -198,12 +200,14 @@ In development, `/__house` is a playground for the house renderer (focus states,
 
 ## Assumptions to double-check
 
-- **Laundry is in the mechanical room.** The PRD lists a dryer but not where it is; the washer, dryer
-  and dryer-vent tasks sit in the mechanical room. Move them in each task if not.
+- **What the plans don't show.** The heat pump's indoor unit is drawn in the mechanical room next to
+  the water heater and air exchanger, and its outdoor unit in the backyard. Move a task's room or
+  fixture if yours are elsewhere.
 - **Northern-hemisphere seasons** (mowing May–Oct, tune-ups April/October, faucets winterized in
   October). Edit the frequency on the task if your climate differs.
-- **Stylized layout.** Rooms are drawn as one row per floor in the right order; rename rooms in
-  Settings. The default deploy region is Montréal (`northamerica-northeast1`); change `REGION` as needed.
+- **Layout from the floor plans.** Rooms, doors and the main fixtures follow the plans; small jogs in
+  the outer walls are straightened. Rooms can be renamed in Settings. The default deploy region is
+  Montréal (`northamerica-northeast1`); change `REGION` as needed.
 
 ## Next (PRD §10)
 

@@ -54,7 +54,7 @@ describe('setup and sign-in', () => {
     expect(tasks).toHaveLength(SEED_TASKS.length);
     expect(tasks.every((t) => t.kind === 'maintenance' && t.visibility === 'shared')).toBe(true);
     const vent = tasks.find((t) => t.seedKey === 'dryer-vent-cleaning')!;
-    expect(vent).toMatchObject({ dueDate: '2026-11-01', priority: 'critical', zoneId: 'mechanical' });
+    expect(vent).toMatchObject({ dueDate: '2026-11-01', priority: 'critical', zoneId: 'laundry' });
   });
 
   it('refuses a second setup and rejects bad passwords', async () => {
