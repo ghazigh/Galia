@@ -319,7 +319,29 @@ const ROOM_PARTS: Record<string, Part[]> = {
   ],
 
   // Upper floor
-  bedroom2: [rug(0.6, 2.0, 2.7, 3.05, 'rugBlue'), ...nightstand(0.32), ...bed(0.85, 0.16, 1.4, 'sage'), ...nightstand(2.38), ...plant(2.9, 2.85)],
+  // The home office (zone id kept as bedroom2): desk under the back window, bookshelf, loveseat.
+  bedroom2: [
+    rug(0.95, 1.2, 2.2, 2.95, 'rugBlue'),
+    box([0.1, 1.5, 0.72], [0.7, 1.6, 0.04], 'wood', { r: 0.01 }),
+    box([0.12, 1.52, 0], [0.62, 0.45, 0.72], 'cabinet'),
+    box([0.12, 3.02, 0], [0.05, 0.05, 0.72], 'woodDark'),
+    box([0.7, 3.02, 0], [0.05, 0.05, 0.72], 'woodDark'),
+    box([0.18, 2.0, 0.76], [0.04, 0.62, 0.38], 'screen'),
+    box([0.24, 2.26, 0.76], [0.12, 0.1, 0.08], 'black'),
+    box([0.42, 2.72, 0.76], [0.3, 0.24, 0.02], 'steel'),
+    cyl(0.3, 1.68, 0.76, 0.06, 0.3, 'lamp', { seg: 16 }),
+    ...chair(1.15, 2.3, 'x1', 'black'),
+    box([0.3, 0.12, 0], [1.6, 0.35, 1.9], 'woodLight'),
+    ...[0.45, 0.95, 1.45].flatMap((z, row) =>
+      [0, 1, 2].map((i) => box([0.38 + i * 0.5, 0.16, z], [0.42, 0.26, 0.3], (['terracotta', 'sage', 'rugBlue', 'lavender'] as const)[(i + row) % 4])),
+    ),
+    box([2.35, 0.62, 0], [0.75, 1.46, 0.42], 'sofa', { r: 0.08 }),
+    box([2.85, 0.62, 0.36], [0.24, 1.46, 0.5], 'sofa', { r: 0.1 }),
+    box([2.35, 0.45, 0], [0.75, 0.18, 0.6], 'sofa', { r: 0.06 }),
+    box([2.35, 2.07, 0], [0.75, 0.18, 0.6], 'sofa', { r: 0.06 }),
+    box([2.4, 1.0, 0.4], [0.42, 0.7, 0.12], 'cushion', { r: 0.05 }),
+    ...plant(2.05, 0.4),
+  ],
   'bedroom2-closet': clothesRail(0.3, 2.3, 3.85),
   bathroom: [
     rug(4.3, 0.5, 4.85, 1.25, 'sage'),

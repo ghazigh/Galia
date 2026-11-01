@@ -643,11 +643,29 @@ export function partFurniture(id: string, p: P): ReactNode {
     case 'bedroom2':
       return (
         <g>
-          <FloorRect x0={0.6} y0={2.0} x1={2.7} y1={3.05} fill={p.tint(C.rugBlue)} />
-          <Nightstand p={p} x={0.32} />
-          <Bed p={p} x={0.85} width={1.4} blanket={C.sage} double />
-          <Nightstand p={p} x={2.38} />
-          <Plant p={p} x={2.9} y={2.85} />
+          {/* home office: bookshelf, loveseat, desk under the back window */}
+          <FloorRect x0={0.95} y0={1.2} x1={2.2} y1={2.95} fill={p.tint(C.rugBlue)} />
+          <Box at={[0.3, 0.12, 0]} size={[1.6, 0.35, 1.9]} color={p.tint(shade(C.wood, 0.15))} shadow={shadow} />
+          <Face plane="y" at={0.47}>
+            {[0.45, 0.95, 1.45].flatMap((v, row) =>
+              [0, 1, 2].map((i) => (
+                <rect key={`${row}-${i}`} x={0.38 + i * 0.5} y={v} width={0.42} height={0.3} fill={p.tint([C.terracotta, C.sage, C.rugBlue, C.lavender][(i + row) % 4])} />
+              )),
+            )}
+          </Face>
+          <Plant p={p} x={2.05} y={0.4} />
+          <Box at={[2.35, 0.45, 0]} size={[0.75, 0.18, 0.6]} color={p.tint(C.sofa)} shadow={shadow} />
+          <Box at={[2.35, 0.62, 0]} size={[0.75, 1.46, 0.42]} color={p.tint(C.sofa)} shadow={shadow} />
+          <Box at={[2.85, 0.62, 0.42]} size={[0.24, 1.46, 0.45]} color={p.tint(C.sofa)} />
+          <Box at={[2.4, 1.0, 0.42]} size={[0.42, 0.7, 0.1]} color={p.tint(C.cushion)} />
+          <Box at={[2.35, 2.07, 0]} size={[0.75, 0.18, 0.6]} color={p.tint(C.sofa)} />
+          <Box at={[0.12, 1.52, 0]} size={[0.62, 0.45, 0.72]} color={p.tint(C.cabinet)} shadow={shadow} />
+          <Box at={[0.12, 3.02, 0]} size={[0.05, 0.05, 0.72]} color={p.tint(C.woodDark)} />
+          <Box at={[0.7, 3.02, 0]} size={[0.05, 0.05, 0.72]} color={p.tint(C.woodDark)} />
+          <Box at={[0.1, 1.5, 0.72]} size={[0.7, 1.6, 0.04]} color={p.tint(C.wood)} />
+          <Box at={[0.18, 2.0, 0.76]} size={[0.04, 0.62, 0.38]} color={p.tint('#15181d')} />
+          <Box at={[0.42, 2.72, 0.76]} size={[0.3, 0.24, 0.02]} color={p.tint(C.steel)} />
+          <Chair p={p} x={1.15} y={2.3} back="x1" seat="#2b2d31" />
         </g>
       );
     case 'bedroom2-closet':

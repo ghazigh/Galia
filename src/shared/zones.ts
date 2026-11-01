@@ -29,7 +29,7 @@ export interface ZoneDef {
 export const ZONES: readonly ZoneDef[] = [
   { id: 'roof', name: 'Roof & gutters', level: 'roof', blurb: 'Shingles, gutters and downspouts' },
   { id: 'bedroom1', name: 'Primary bedroom', level: 'upper', blurb: 'Front bedroom with walk-in closet' },
-  { id: 'bedroom2', name: 'Bedroom 2', level: 'upper', blurb: 'Back bedroom' },
+  { id: 'bedroom2', name: 'Office', level: 'upper', blurb: 'Home office at the back' },
   { id: 'bathroom', name: 'Bathroom', level: 'upper', blurb: 'Bathtub, shower and vanity' },
   { id: 'bedroom3', name: 'Bedroom 3', level: 'upper', blurb: 'Side bedroom' },
   { id: 'entry', name: 'Entry', level: 'ground', blurb: 'Side door, closet and stairs' },

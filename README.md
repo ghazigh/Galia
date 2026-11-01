@@ -14,7 +14,7 @@ status labels with leader lines pointing at the parts that need you, and a short
 **The house is the interface.** The home screen is a real-time 3D model of the actual house, built in
 code with three.js from its floor plans (22 × 33 ft): basement (garage, family room, laundry,
 mechanical room), ground floor (side entry, open living / dining / kitchen with the island, powder
-room), upper floor (three bedrooms, primary walk-in, bathroom with tub and separate shower), the roof
+room), upper floor (two bedrooms, an office, primary walk-in, bathroom with tub and separate shower), the roof
 and the backyard.
 
 The outside follows photos of the house: dark and light grey brick with a cream-siding stairwell
