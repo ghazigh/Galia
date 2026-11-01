@@ -1,22 +1,37 @@
 import { X } from 'lucide-react';
 import { AnimatePresence, motion, useDragControls, type PanInfo } from 'motion/react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useMediaQuery } from '../lib/media';
 import { cx, IconButton } from './ui';
 
 let openSheets = 0;
+const sheetListeners = new Set<() => void>();
 
 function useScrollLock(active: boolean) {
   useEffect(() => {
     if (!active) return;
     openSheets += 1;
     document.documentElement.style.overflow = 'hidden';
+    for (const listener of sheetListeners) listener();
     return () => {
       openSheets -= 1;
       if (openSheets === 0) document.documentElement.style.overflow = '';
+      for (const listener of sheetListeners) listener();
     };
   }, [active]);
+}
+
+/** Whether any modal sheet is open (the 3D house pauses behind them). */
+export function useModalOpen(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      sheetListeners.add(listener);
+      return () => sheetListeners.delete(listener);
+    },
+    () => openSheets > 0,
+    () => false,
+  );
 }
 
 export interface SheetProps {
@@ -62,7 +77,7 @@ export function Sheet({ open, onClose, title, headerAction, footer, children, ta
       {open && (
         <div className="fixed inset-0 z-50">
           <motion.div
-            className="absolute inset-0 bg-[rgb(20_18_14/0.32)] backdrop-blur-[2px] dark:bg-black/50"
+            className="absolute inset-0 bg-[rgb(10_11_13/0.4)] backdrop-blur-[3px] dark:bg-black/60"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -75,10 +90,10 @@ export function Sheet({ open, onClose, title, headerAction, footer, children, ta
             aria-label={label ?? (typeof title === 'string' ? title : undefined)}
             tabIndex={-1}
             className={cx(
-              'absolute flex flex-col bg-surface shadow-sheet outline-none',
+              'absolute flex flex-col bg-surface shadow-sheet outline-none dark:border dark:border-line',
               wide
-                ? 'top-3 right-3 bottom-3 w-[440px] rounded-3xl'
-                : cx('inset-x-0 bottom-0 rounded-t-[28px] pb-safe', tall ? 'h-[92dvh]' : 'max-h-[92dvh]'),
+                ? 'top-3 right-3 bottom-3 w-[440px] rounded-[24px]'
+                : cx('inset-x-0 bottom-0 rounded-t-[24px] pb-safe', tall ? 'h-[92dvh]' : 'max-h-[92dvh]'),
             )}
             initial={wide ? { x: 480, opacity: 0.6 } : { y: '100%' }}
             animate={wide ? { x: 0, opacity: 1 } : { y: 0 }}
@@ -95,9 +110,9 @@ export function Sheet({ open, onClose, title, headerAction, footer, children, ta
               className={cx('shrink-0 touch-none', wide ? 'pt-3' : 'pt-2')}
               onPointerDown={(event) => !wide && drag.start(event)}
             >
-              {!wide && <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-line-strong" />}
+              {!wide && <div className="mx-auto mb-1 h-[5px] w-9 rounded-full bg-line-strong" />}
               <div className="flex items-center gap-2 px-5 pt-1 pb-2">
-                <div className="min-w-0 flex-1 font-display text-[19px] font-semibold tracking-tight text-ink">{title}</div>
+                <div className="min-w-0 flex-1 font-display text-[18px] font-medium tracking-tight text-ink">{title}</div>
                 {headerAction}
                 <IconButton label="Close" onClick={onClose} className="-mr-2">
                   <X className="size-5" />

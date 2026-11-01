@@ -6,6 +6,7 @@ import { App } from './app/App';
 import { ToastProvider } from './components/Toast';
 import { ApiError } from './lib/api';
 import { keys } from './lib/queries';
+import '@fontsource-variable/inter/wght.css';
 import './styles/app.css';
 
 const queryClient: QueryClient = new QueryClient({

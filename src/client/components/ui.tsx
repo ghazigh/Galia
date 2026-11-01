@@ -19,17 +19,17 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'soft';
 type Size = 'sm' | 'md' | 'lg';
 
 const VARIANT: Record<Variant, string> = {
-  primary: 'bg-accent text-on-accent hover:bg-accent-strong shadow-[0_6px_18px_-8px_var(--color-accent)]',
-  secondary: 'bg-surface text-ink border border-line hover:border-line-strong',
-  ghost: 'text-ink-2 hover:bg-sunken',
-  danger: 'bg-overdue-soft text-overdue hover:brightness-95',
-  soft: 'bg-accent-soft text-accent hover:brightness-95',
+  primary: 'bg-accent text-on-accent hover:bg-accent-strong',
+  secondary: 'bg-sunken text-ink hover:bg-elevated dark:hover:bg-line-strong',
+  ghost: 'text-ink-2 hover:bg-sunken hover:text-ink',
+  danger: 'bg-overdue-soft text-overdue hover:brightness-110',
+  soft: 'bg-accent-soft text-accent-ink hover:brightness-110',
 };
 
 const SIZE: Record<Size, string> = {
-  sm: 'h-8 px-3 text-[13px] gap-1.5 rounded-full',
-  md: 'h-10 px-4 text-sm gap-2 rounded-full',
-  lg: 'h-12 px-5 text-[15px] gap-2 rounded-2xl',
+  sm: 'h-8 px-3.5 text-[13px] gap-1.5 rounded-full',
+  md: 'h-10 px-4 text-sm gap-2 rounded-xl',
+  lg: 'h-12 px-5 text-[15px] gap-2 rounded-xl',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -48,7 +48,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       className={cx(
-        'inline-flex min-w-0 items-center justify-center font-semibold whitespace-nowrap transition-[background,box-shadow,transform,filter] duration-150 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex min-w-0 items-center justify-center font-medium tracking-[-0.005em] whitespace-nowrap transition-[background,color,box-shadow,transform,filter] duration-200 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40',
         VARIANT[variant],
         SIZE[size],
         // In a flex row a block button takes the remaining space instead of overflowing it.
@@ -75,7 +75,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cx(
-        'inline-flex size-10 shrink-0 items-center justify-center rounded-full text-ink-2 transition hover:bg-sunken active:scale-95',
+        'inline-flex size-10 shrink-0 items-center justify-center rounded-full text-ink-2 transition hover:bg-sunken hover:text-ink active:scale-95',
         className,
       )}
       {...props}
@@ -107,10 +107,10 @@ export function Chip({
       onClick={onClick}
       aria-pressed={onClick ? selected : undefined}
       className={cx(
-        'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium whitespace-nowrap transition',
+        'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium whitespace-nowrap transition',
         selected
           ? 'border-transparent bg-ink text-canvas'
-          : tone ?? 'border-line bg-surface text-ink-2 hover:border-line-strong',
+          : tone ?? 'border-transparent bg-sunken text-ink-2 hover:text-ink',
         onClick && 'active:scale-[0.97]',
         className,
       )}
@@ -148,7 +148,7 @@ export function Segmented<T extends string>({
 }) {
   const id = useId();
   return (
-    <div role="tablist" className={cx('flex rounded-full bg-sunken p-1', className)}>
+    <div role="tablist" className={cx('flex rounded-xl bg-sunken p-1', className)}>
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -158,14 +158,14 @@ export function Segmented<T extends string>({
             aria-selected={active}
             onClick={() => onChange(option.value)}
             className={cx(
-              'relative flex-1 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors',
+              'relative flex-1 rounded-[9px] px-3 py-1.5 text-[13px] font-medium transition-colors',
               active ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
             )}
           >
             {active && (
               <motion.span
                 layoutId={`seg-${id}`}
-                className="absolute inset-0 rounded-full bg-surface shadow-card"
+                className="absolute inset-0 rounded-[9px] bg-surface shadow-card dark:bg-line-strong"
                 transition={{ type: 'spring', stiffness: 420, damping: 34 }}
               />
             )}
@@ -222,12 +222,12 @@ export function Switch({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cx(
-        'relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-40',
+        'relative h-[30px] w-[50px] shrink-0 rounded-full transition-colors duration-200 disabled:opacity-40',
         checked ? 'bg-accent' : 'bg-line-strong',
       )}
     >
       <motion.span
-        className="absolute top-0.5 left-0.5 size-6 rounded-full bg-white shadow"
+        className="absolute top-[3px] left-[3px] size-6 rounded-full bg-white shadow-[0_2px_6px_rgb(0_0_0/0.3)]"
         animate={{ x: checked ? 20 : 0 }}
         transition={{ type: 'spring', stiffness: 500, damping: 32 }}
       />
@@ -258,7 +258,7 @@ export function Field({
   if (group) {
     return (
       <div role="group" aria-labelledby={id} className="flex flex-col gap-1.5">
-        <span id={id} className="text-[13px] font-semibold text-ink-2">
+        <span id={id} className="eyebrow text-ink-3">
           {label}
         </span>
         {children}
@@ -268,7 +268,7 @@ export function Field({
   }
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[13px] font-semibold text-ink-2">{label}</span>
+      <span className="eyebrow text-ink-3">{label}</span>
       {children}
       {footer}
     </label>
@@ -276,7 +276,7 @@ export function Field({
 }
 
 const inputClass =
-  'w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-3 outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/15';
+  'w-full rounded-xl border border-transparent bg-sunken px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-3 outline-none transition focus:border-accent focus:bg-surface-2 focus:ring-4 focus:ring-accent/20';
 
 export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function TextInput(
   { className, ...props },
@@ -309,8 +309,8 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center px-6 py-10 text-center">
-      {icon && <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-sunken text-ink-2">{icon}</div>}
-      <p className="font-display text-[17px] font-semibold tracking-tight text-ink">{title}</p>
+      {icon && <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-sunken text-ink-2">{icon}</div>}
+      <p className="font-display text-[17px] font-medium tracking-tight text-ink">{title}</p>
       {body && <p className="mt-1 max-w-xs text-sm text-ink-3">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -319,8 +319,8 @@ export function EmptyState({
 
 export function SectionTitle({ children, action, count }: { children: ReactNode; action?: ReactNode; count?: number }) {
   return (
-    <div className="flex items-center justify-between px-1 pt-5 pb-2">
-      <h3 className="text-[12px] font-bold tracking-[0.08em] text-ink-3 uppercase">
+    <div className="flex items-center justify-between px-1 pt-6 pb-2">
+      <h3 className="eyebrow text-ink-3">
         {children}
         {count !== undefined && <span className="ml-1.5 text-ink-3/70 tabular">{count}</span>}
       </h3>
@@ -330,5 +330,5 @@ export function SectionTitle({ children, action, count }: { children: ReactNode;
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cx('rounded-3xl border border-line/70 bg-surface shadow-card', className)}>{children}</div>;
+  return <div className={cx('rounded-[20px] border border-line bg-surface', className)}>{children}</div>;
 }

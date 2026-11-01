@@ -22,6 +22,9 @@ export default defineConfig({
       injectManifest: {
         rollupFormat: 'iife',
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
+        // Latin covers the UI; other scripts still load from the server when someone types them.
+        globIgnores: ['**/inter-{cyrillic,cyrillic-ext,greek,greek-ext,vietnamese}-*.woff2'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: {
         id: '/',
@@ -33,8 +36,8 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         orientation: 'portrait',
-        theme_color: '#f4f1ea',
-        background_color: '#f4f1ea',
+        theme_color: '#0d0e10',
+        background_color: '#0d0e10',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -67,8 +70,15 @@ export default defineConfig({
     target: 'es2022',
     rollupOptions: {
       output: {
-        // Libraries change less often than the app, so their chunk stays cached across releases.
-        manualChunks: (id) => (id.includes('/node_modules/') ? 'vendor' : undefined),
+        // Libraries change less often than the app, so their chunks stay cached across releases.
+        // The 3D engine gets its own chunk, loaded only when a scene is on screen.
+        manualChunks: (id) => {
+          if (!id.includes('/node_modules/')) return undefined;
+          if (/\/node_modules\/(three|@react-three|camera-controls|its-fine|suspend-react|react-use-measure|zustand)\//.test(id)) {
+            return 'scene-vendor';
+          }
+          return 'vendor';
+        },
       },
     },
   },

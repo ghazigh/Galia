@@ -28,7 +28,8 @@ export function mountClient(app: Hono<Env>, clientDir: string): void {
         frameAncestors: ["'none'"],
       },
       crossOriginEmbedderPolicy: false,
-      permissionsPolicy: { camera: [], microphone: [], geolocation: [] },
+      // Geolocation stays opt-in: only the app itself may ask (Settings → Daylight → Use this device).
+      permissionsPolicy: { camera: [], microphone: [], geolocation: ['self'] },
     }),
   );
 

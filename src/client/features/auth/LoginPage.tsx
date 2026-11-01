@@ -28,7 +28,7 @@ export function LoginPage() {
           }
         }}
       >
-        <h1 className="font-display text-[28px] font-semibold tracking-tight text-ink">Welcome home</h1>
+        <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em] text-ink">Welcome home</h1>
         <p className="mt-1 text-[15px] text-ink-2">Sign in to see what the house needs.</p>
         <div className="mt-6 space-y-4">
           <Field label="Email">

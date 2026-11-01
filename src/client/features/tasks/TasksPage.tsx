@@ -8,8 +8,9 @@ import { AnimatePresence } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useAppData, useUi } from '../../app/context';
+import { PageHeader } from '../../components/nav';
 import { useToast } from '../../components/Toast';
-import { Avatar, Button, Chip, cx, EmptyState, Segmented, SectionTitle } from '../../components/ui';
+import { Avatar, Button, Chip, cx, EmptyState, IconButton, Segmented, SectionTitle } from '../../components/ui';
 import { errorMessage } from '../../lib/api';
 import { useCreateTask } from '../../lib/queries';
 import { useOpenTask } from './actions';
@@ -32,7 +33,7 @@ function Group({ title, tasks, onOpen, count }: { title: string; tasks: Task[]; 
   return (
     <div>
       <SectionTitle count={count ? tasks.length : undefined}>{title}</SectionTitle>
-      <div className="space-y-0.5 rounded-3xl border border-line/70 bg-surface p-1.5 shadow-card">
+      <div className="space-y-0.5 rounded-[20px] border border-line bg-surface p-1.5">
         <AnimatePresence initial={false}>
           {tasks.map((task) => (
             <TaskRow key={task.id} task={task} onOpen={onOpen} />
@@ -48,8 +49,8 @@ function QuickIdeas() {
   const toast = useToast();
   const { me } = useAppData();
   return (
-    <div className="rounded-3xl border border-dashed border-line-strong p-4">
-      <p className="flex items-center gap-1.5 text-[13px] font-semibold text-ink-2">
+    <div className="rounded-[20px] border border-dashed border-line-strong p-4">
+      <p className="flex items-center gap-1.5 text-[13px] font-medium text-ink-2">
         <Zap className="size-4 text-quick" /> Quick calls people forget
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -160,20 +161,37 @@ export function TasksPage() {
   }, [list, view, open, today, zoneLabel]);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 pt-[max(env(safe-area-inset-top),20px)] pb-10 lg:px-8 lg:pt-10">
-      <header className="flex items-end justify-between gap-3 px-1">
-        <div>
-          <h1 className="font-display text-[30px] font-semibold tracking-tight text-ink">Tasks</h1>
-          <p className="text-[14px] text-ink-3">
-            {open.length} open{list === 'maintenance' ? ' maintenance items' : ''}
-          </p>
-        </div>
-        {list === 'maintenance' && (
-          <Button variant="soft" size="sm" icon={<Sparkles className="size-4" />} onClick={() => setExpertOpen(true)}>
-            Expert plan
-          </Button>
-        )}
-      </header>
+    <div className="mx-auto w-full max-w-2xl px-4 pb-12 lg:px-8">
+      <PageHeader
+        title="Tasks"
+        subtitle={`${open.length} open${list === 'maintenance' ? ' maintenance items' : ''}`}
+        actions={
+          <div className="flex items-center gap-2">
+            {list === 'maintenance' && (
+              <Button variant="soft" size="sm" icon={<Sparkles className="size-4" />} onClick={() => setExpertOpen(true)}>
+                Expert plan
+              </Button>
+            )}
+            <IconButton
+              label="New task"
+              onClick={() =>
+                openComposer({
+                  mode: 'create',
+                  defaults:
+                    list === 'mine'
+                      ? { visibility: 'personal', assigneeId: me.id }
+                      : list === 'maintenance'
+                        ? { kind: 'maintenance' }
+                        : { visibility: 'shared' },
+                })
+              }
+              className="bg-sunken text-ink"
+            >
+              <Plus className="size-5" />
+            </IconButton>
+          </div>
+        }
+      />
 
       <Segmented
         className="mt-4"
@@ -187,7 +205,7 @@ export function TasksPage() {
       />
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-full border border-line bg-surface px-3.5">
+        <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-xl bg-sunken px-3.5 focus-within:ring-2 focus-within:ring-accent/40">
           <Search className="size-4 shrink-0 text-ink-3" />
           <input
             value={query}
@@ -280,7 +298,7 @@ export function TasksPage() {
             Completed recently ({recentlyDone.length})
           </button>
           {showDone && (
-            <div className="mt-2 space-y-0.5 rounded-3xl border border-line/70 bg-surface p-1.5 opacity-80">
+            <div className="mt-2 space-y-0.5 rounded-[20px] border border-line bg-surface p-1.5 opacity-80">
               {recentlyDone.map((task) => (
                 <TaskRow key={task.id} task={task} onOpen={openTask} />
               ))}

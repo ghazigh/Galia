@@ -55,7 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.97 }}
               transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-              className="pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl bg-ink py-2.5 pr-2 pl-3.5 text-[14px] font-medium text-canvas shadow-float lg:mb-[-60px]"
+              className="pointer-events-auto flex max-w-md items-center gap-3 rounded-full bg-elevated py-2 pr-2 pl-4 text-[14px] font-medium text-ink shadow-float ring-1 ring-line-strong lg:mb-[-60px]"
             >
               {t.tone === 'error' ? (
                 <CircleAlert className="size-[18px] shrink-0 text-overdue" />
@@ -69,7 +69,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     t.action!.onClick();
                     dismiss(t.id);
                   }}
-                  className={cx('rounded-xl px-3 py-1.5 text-[13px] font-bold text-accent-strong hover:bg-white/10')}
+                  className={cx('rounded-full px-3.5 py-1.5 text-[13px] font-semibold text-accent-ink hover:bg-sunken')}
                 >
                   {t.action.label}
                 </button>

@@ -1,12 +1,13 @@
 import { contactHref, dueSentence, formatMinutes, formatShortDate } from '@shared/format';
 import { effectiveEstimate, rankTasks, type RankedTask } from '@shared/priority';
-import { Check, ChevronRight, Clock3, Coffee, Flame, Phone, PartyPopper, Zap } from 'lucide-react';
+import { Check, ChevronRight, Clock3, Coffee, Flame, Phone, PartyPopper, Plus, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useAppData } from '../../app/context';
+import { useAppData, useUi } from '../../app/context';
 import { Menu } from '../../components/Menu';
-import { Button, Chip, cx, EmptyState, SectionTitle } from '../../components/ui';
+import { PageHeader } from '../../components/nav';
+import { Button, Chip, cx, EmptyState, IconButton, SectionTitle } from '../../components/ui';
 import { DUE_TONE } from '../../lib/labels';
 import { snoozeOptions, useCompleteWithUndo, useOpenTask, useSnoozeWithToast } from '../tasks/actions';
 import { TaskRow } from '../tasks/TaskRow';
@@ -35,19 +36,19 @@ function NextUp({ item }: { item: RankedTask }) {
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="relative overflow-hidden rounded-[28px] border border-line/70 bg-surface p-5 shadow-card"
+      className="relative overflow-hidden rounded-[24px] border border-line bg-surface p-5"
     >
       <div
-        className="pointer-events-none absolute -top-20 -right-16 size-56 rounded-full opacity-60 blur-3xl"
+        className="pointer-events-none absolute -top-24 -right-20 size-64 rounded-full opacity-70 blur-3xl"
         style={{
           background:
             timing.state === 'overdue' ? 'var(--color-overdue-soft)' : task.quickWin ? 'var(--color-quick-soft)' : 'var(--color-accent-soft)',
         }}
       />
       <div className="relative">
-        <p className="text-[12px] font-bold tracking-[0.1em] text-ink-3 uppercase">Up next</p>
-        <button onClick={() => openTask(task)} className="mt-1 block text-left">
-          <h2 className="font-display text-[23px] leading-tight font-semibold tracking-tight text-ink">{task.title}</h2>
+        <p className="eyebrow text-ink-3">Up next</p>
+        <button onClick={() => openTask(task)} className="mt-2 block text-left">
+          <h2 className="font-display text-[24px] leading-tight font-semibold tracking-[-0.02em] text-ink">{task.title}</h2>
         </button>
         <p className={cx('mt-1 text-[13.5px] font-medium', DUE_TONE[timing.state])}>
           {dueSentence(timing, today)}
@@ -84,7 +85,7 @@ function NextUp({ item }: { item: RankedTask }) {
           {call && (
             <a
               href={call}
-              className="inline-flex h-12 items-center gap-2 rounded-2xl bg-quick px-5 text-[15px] font-semibold text-white shadow-[0_6px_18px_-8px_var(--color-quick)] active:scale-[0.97]"
+              className="inline-flex h-12 items-center gap-2 rounded-xl bg-quick px-5 text-[15px] font-medium text-white active:scale-[0.97]"
             >
               <Phone className="size-4" /> Call
             </a>
@@ -124,13 +125,13 @@ function QuickWinCard({ item }: { item: RankedTask }) {
       initial={{ opacity: 0, x: 12 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="flex w-56 shrink-0 snap-start flex-col rounded-3xl border border-line/70 bg-surface p-4 shadow-card"
+      className="flex w-56 shrink-0 snap-start flex-col rounded-[20px] border border-line bg-surface p-4"
     >
       <button onClick={() => openTask(item.task)} className="flex-1 text-left">
-        <span className="inline-flex items-center gap-1 text-[12px] font-bold text-quick">
+        <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-quick">
           <Zap className="size-3.5" /> {estimate ? formatMinutes(estimate) : 'Quick'}
         </span>
-        <p className="mt-1 line-clamp-2 text-[15px] leading-snug font-semibold text-ink">{item.task.title}</p>
+        <p className="mt-1 line-clamp-2 text-[15px] leading-snug font-medium text-ink">{item.task.title}</p>
       </button>
       <div className="mt-3 flex gap-2">
         {call && (
@@ -151,6 +152,7 @@ function QuickWinCard({ item }: { item: RankedTask }) {
 
 export function FocusPage() {
   const { tasks, today, me, memberById } = useAppData();
+  const { openComposer } = useUi();
   const openTask = useOpenTask();
   const [params] = useSearchParams();
   const [minutes, setMinutes] = useState<number | null>(params.get('quick') ? 15 : null);
@@ -172,14 +174,19 @@ export function FocusPage() {
   ].filter((g) => g.items.length > 0);
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 pt-[max(env(safe-area-inset-top),20px)] pb-10 lg:px-8 lg:pt-10">
-      <header className="px-1">
-        <h1 className="font-display text-[30px] font-semibold tracking-tight text-ink">Focus</h1>
-        <p className="text-[14px] text-ink-3">The most important thing, always obvious.</p>
-      </header>
+    <div className="mx-auto w-full max-w-2xl px-4 pb-12 lg:px-8">
+      <PageHeader
+        title="Focus"
+        subtitle="The most important thing, always obvious."
+        actions={
+          <IconButton label="New task" onClick={() => openComposer()} className="bg-sunken text-ink">
+            <Plus className="size-5" />
+          </IconButton>
+        }
+      />
 
       <div className="mt-4 flex items-center gap-2">
-        <span className="shrink-0 pl-1 text-[13px] font-semibold text-ink-2">I have</span>
+        <span className="eyebrow shrink-0 pl-1 text-ink-3">I have</span>
         <div className="scrollbar-none -mr-4 flex gap-2 overflow-x-auto pr-4">
           {TIME_FILTERS.map((filter) => (
             <Chip key={filter.label} selected={minutes === filter.minutes} onClick={() => setMinutes(filter.minutes)}>
@@ -195,7 +202,7 @@ export function FocusPage() {
             <NextUp key={next.task.id} item={next} />
           ) : (
             <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <div className="rounded-[28px] border border-line/70 bg-surface shadow-card">
+              <div className="rounded-[24px] border border-line bg-surface">
                 <EmptyState
                   icon={minutes ? <Coffee className="size-5" /> : <PartyPopper className="size-5" />}
                   title={minutes ? `Nothing that fits in ${minutes} minutes` : 'All clear'}
@@ -223,7 +230,7 @@ export function FocusPage() {
       {groups.map((group) => (
         <div key={group.title}>
           <SectionTitle count={group.items.length}>{group.title}</SectionTitle>
-          <div className="space-y-0.5 rounded-3xl border border-line/70 bg-surface p-1.5 shadow-card">
+          <div className="space-y-0.5 rounded-[20px] border border-line bg-surface p-1.5">
             <AnimatePresence initial={false}>
               {group.items.map(({ task, reasons }) => (
                 <TaskRow

@@ -37,7 +37,7 @@ import { snoozeOptions, useCompleteWithUndo, useDeleteWithUndo, useSnoozeWithToa
 function MetaRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-3 py-2.5">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-sunken text-ink-2">{icon}</span>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sunken text-ink-2">{icon}</span>
       <span className="w-24 shrink-0 text-[13px] text-ink-3">{label}</span>
       <span className="min-w-0 flex-1 text-[14px] font-medium text-ink">{children}</span>
     </div>
@@ -52,7 +52,7 @@ function GuideSection({ task }: { task: Task }) {
     <div className="mt-5 space-y-4">
       {guide.why && (
         <div className="rounded-2xl bg-accent-soft/60 p-4">
-          <p className="mb-1 flex items-center gap-1.5 text-[12px] font-bold tracking-wide text-accent uppercase">
+          <p className="mb-1 flex items-center gap-1.5 eyebrow text-accent-ink">
             <Lightbulb className="size-3.5" /> Why it matters
           </p>
           <p className="text-[14px] leading-relaxed text-ink">{guide.why}</p>
@@ -60,7 +60,7 @@ function GuideSection({ task }: { task: Task }) {
       )}
       {guide.steps.length > 0 && (
         <div>
-          <p className="mb-2 flex items-center gap-1.5 text-[12px] font-bold tracking-wide text-ink-3 uppercase">
+          <p className="mb-2 flex items-center gap-1.5 eyebrow text-ink-3">
             <ListChecks className="size-3.5" /> How to do it
           </p>
           <ol className="space-y-1">
@@ -99,7 +99,7 @@ function GuideSection({ task }: { task: Task }) {
       )}
       {guide.supplies && guide.supplies.length > 0 && (
         <div>
-          <p className="mb-2 flex items-center gap-1.5 text-[12px] font-bold tracking-wide text-ink-3 uppercase">
+          <p className="mb-2 flex items-center gap-1.5 eyebrow text-ink-3">
             <Wrench className="size-3.5" /> You'll need
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -127,7 +127,7 @@ function History({ task }: { task: Task }) {
   if (!data || data.length === 0) return null;
   return (
     <div className="mt-6">
-      <p className="mb-2 text-[12px] font-bold tracking-wide text-ink-3 uppercase">History</p>
+      <p className="mb-2 eyebrow text-ink-3">History</p>
       <ul className="relative space-y-3 border-l border-line pl-4">
         {data.slice(0, 8).map((entry) => {
           const who = memberById(entry.userId);
@@ -258,7 +258,7 @@ export function TaskSheet() {
       {shown && timing && (
         <div className="pb-4">
           {shown.zoneId && (
-            <div className="-mx-1 mb-4 h-44 overflow-hidden rounded-3xl bg-canvas">
+            <div className="-mx-1 mb-4 h-44 overflow-hidden rounded-[20px] bg-sunken">
               <HouseView
                 className="h-full w-full"
                 summaries={{}}
@@ -270,7 +270,7 @@ export function TaskSheet() {
               />
             </div>
           )}
-          <h2 className="font-display text-[24px] leading-tight font-semibold tracking-tight text-ink">{shown.title}</h2>
+          <h2 className="font-display text-[24px] leading-tight font-semibold tracking-[-0.02em] text-ink">{shown.title}</h2>
           <div className="mt-3 flex flex-wrap gap-1.5">
             <Badge className={DUE_BADGE[timing.state]} icon={<Clock3 className="size-3.5" />}>
               {dueSentence(timing, today)}
@@ -290,7 +290,7 @@ export function TaskSheet() {
             )}
           </div>
 
-          <div className="mt-4 divide-y divide-line/70 rounded-2xl border border-line/70 px-3">
+          <div className="mt-4 divide-y divide-line rounded-[20px] border border-line px-3">
             {shown.zoneId && (
               <MetaRow icon={<MapPin className="size-4" />} label="Where">
                 {zoneLabel(shown.zoneId)}
@@ -330,7 +330,7 @@ export function TaskSheet() {
             {shown.contact && (
               <MetaRow icon={<Phone className="size-4" />} label="Contact">
                 {call ? (
-                  <a href={call} className="font-semibold text-accent">
+                  <a href={call} className="font-medium text-accent-ink">
                     {shown.contact}
                   </a>
                 ) : (

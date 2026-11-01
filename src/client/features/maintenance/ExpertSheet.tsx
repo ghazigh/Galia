@@ -115,7 +115,7 @@ export function ExpertSheet() {
       <div className="space-y-6 pb-6">
         <div className="rounded-3xl border border-accent/20 bg-gradient-to-br from-accent-soft to-surface p-4">
           <p className="flex items-center gap-1.5 text-[14px] font-semibold text-ink">
-            <Sparkles className="size-4 text-accent" /> Ask the house expert
+            <Sparkles className="size-4 text-accent-ink" /> Ask the house expert
           </p>
           <p className="mt-0.5 text-[13px] text-ink-3">
             New appliance or renovation? Describe it and get the maintenance it needs.

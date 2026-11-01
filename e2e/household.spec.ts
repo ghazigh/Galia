@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// One household, built up step by step: onboarding → house ↔ tasks → completing → focus →
-// partner invite → assignment → privacy.
+// One household, built up step by step: onboarding → 3D house ↔ tasks → completing → focus →
+// live sky → partner invite → assignment → privacy. Pages slide over the home screen, which stays
+// mounted (hidden) underneath, so page-level text checks are scoped to <main>.
 test.describe.configure({ mode: 'serial' });
 
 const OWNER = { name: 'Ghazi', email: 'ghazi@example.com', password: 'a very good password' };
@@ -36,14 +37,28 @@ test('onboarding sets up the home with the expert maintenance plan', async () =>
   await page.getByLabel('Password').fill(OWNER.password);
   await page.getByRole('button', { name: 'Create our home' }).click();
 
-  await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening|night), Ghazi/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Our home' })).toBeVisible();
+  await expect(page.getByText(/Good (morning|afternoon|evening|night), Ghazi/)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
   await expect(page.getByRole('group', { name: /Your house/ })).toBeVisible();
   await expect(page.getByText('Test smoke & CO alarms').first()).toBeVisible();
 });
 
+test('the house renders in 3D under a live sky, and floors open up', async () => {
+  const page = ownerPage;
+  await expect(page.locator('canvas')).toBeVisible();
+  await page.getByRole('button', { name: 'Show all floors' }).click();
+  await expect(page.getByRole('button', { name: 'Show all floors' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Show the upper floor' }).click();
+  await expect(page.getByRole('heading', { name: 'Upper floor' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Bathroom:/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Back to the outside view' }).click();
+  await expect(page.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+});
+
 test('selecting a room filters tasks and selecting a task lights up its fixture', async () => {
   const page = ownerPage;
+  await page.getByRole('button', { name: 'Show the ground floor' }).click();
   await page.getByRole('button', { name: /^Kitchen:/ }).click();
   await expect(page.getByRole('heading', { name: 'Kitchen' })).toBeVisible();
   const row = page.locator('[data-task-id]').filter({ hasText: 'Clean the dishwasher filter' });
@@ -70,6 +85,7 @@ test('completing a recurring task reschedules it and can be undone', async () =>
 
 test('a quick win shows up in Focus under the 5-minute filter', async () => {
   const page = ownerPage;
+  await page.getByRole('button', { name: 'Show the outside of the house' }).click();
   const composer = await openComposer(page);
   await composer.getByLabel('Title').fill('Call the dentist');
   await composer.getByRole('switch', { name: 'Quick win' }).click();
@@ -79,14 +95,30 @@ test('a quick win shows up in Focus under the 5-minute filter', async () => {
   await expect(page.getByText('Added')).toBeVisible();
 
   await page.getByRole('link', { name: 'Focus' }).first().click();
-  await page.getByRole('button', { name: '5 min', exact: true }).click();
-  await expect(page.getByText('Call the dentist')).toBeVisible();
-  await expect(page.getByText('Clean the dryer exhaust vent')).toHaveCount(0);
+  const focus = page.getByRole('main');
+  await focus.getByRole('button', { name: '5 min', exact: true }).click();
+  await expect(focus.getByText('Call the dentist')).toBeVisible();
+  await expect(focus.getByText('Clean the dryer exhaust vent')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Back' }).click();
+});
+
+test('the daylight panel follows the real sun and previews the day in 3D', async () => {
+  const page = ownerPage;
+  await page.getByRole('button', { name: /^Daylight: (Sunrise|Sunset)/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Daylight' });
+  await expect(sheet.getByText('Sunrise', { exact: true })).toBeVisible();
+  await expect(sheet.getByText('Sunset', { exact: true })).toBeVisible();
+  await expect(sheet.getByText(/Toronto/).first()).toBeVisible();
+  await sheet.getByRole('button', { name: 'Preview the day in 3D' }).click();
+  const scrubber = page.getByRole('group', { name: 'Sky preview' });
+  await expect(scrubber.getByRole('slider', { name: 'Time of day' })).toBeVisible();
+  await scrubber.getByRole('button', { name: 'Close the sky preview' }).click();
+  await expect(scrubber).toHaveCount(0);
 });
 
 test('a partner joins with an invite link and receives an assigned task', async ({ browser }) => {
   const page = ownerPage;
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('link', { name: /^Settings/ }).click();
   await page.getByRole('button', { name: 'Invite your partner' }).click();
   const link = await page.getByLabel('Invite link').inputValue();
   expect(link).toContain('/join/');
@@ -99,10 +131,10 @@ test('a partner joins with an invite link and receives an assigned task', async 
   await partner.getByLabel('Email').fill(PARTNER.email);
   await partner.getByLabel('Password').fill(PARTNER.password);
   await partner.getByRole('button', { name: 'Join the household' }).click();
-  await expect(partner.getByRole('heading', { name: /Sam/ })).toBeVisible();
+  await expect(partner.getByText(/Good (morning|afternoon|evening|night), Sam/)).toBeVisible();
 
   // The owner hands a chore to the partner.
-  await page.reload();
+  await page.goto('/');
   const composer = await openComposer(page);
   await composer.getByLabel('Title').fill('Pick up the dry cleaning');
   await composer.getByRole('button', { name: 'Sam', exact: true }).click();
@@ -110,8 +142,8 @@ test('a partner joins with an invite link and receives an assigned task', async 
   await expect(page.getByText('Sent to Sam')).toBeVisible();
 
   await partner.goto('/tasks?list=mine');
-  await expect(partner.getByText('Pick up the dry cleaning')).toBeVisible();
-  await expect(partner.getByText('from Ghazi')).toBeVisible();
+  await expect(partner.getByRole('main').getByText('Pick up the dry cleaning')).toBeVisible();
+  await expect(partner.getByRole('main').getByText('from Ghazi')).toBeVisible();
   await partnerContext.close();
 });
 
@@ -129,7 +161,7 @@ test('private to-dos stay private', async ({ browser }) => {
   await partner.getByLabel('Email').fill(PARTNER.email);
   await partner.getByLabel('Password').fill(PARTNER.password);
   await partner.getByRole('button', { name: 'Sign in' }).click();
-  await expect(partner.getByRole('heading', { name: /Sam/ })).toBeVisible();
+  await expect(partner.getByText(/Good (morning|afternoon|evening|night), Sam/)).toBeVisible();
   for (const list of ['mine', 'household']) {
     await partner.goto(`/tasks?list=${list}`);
     await expect(partner.getByRole('heading', { name: 'Tasks' })).toBeVisible();
@@ -138,5 +170,5 @@ test('private to-dos stay private', async ({ browser }) => {
   await partnerContext.close();
 
   await page.goto('/tasks?list=mine');
-  await expect(page.getByText('Plan the surprise party')).toBeVisible();
+  await expect(page.getByRole('main').getByText('Plan the surprise party')).toBeVisible();
 });

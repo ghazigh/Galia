@@ -1,17 +1,20 @@
-import { APP_NAME } from '@shared/brand';
 import { rankTasks } from '@shared/priority';
 import { House, ListChecks, Plus, Settings, Target } from 'lucide-react';
-import { motion } from 'motion/react';
-import { useEffect, useMemo, type ComponentType } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router';
-import { Avatar, cx } from '../components/ui';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { NavLink, useLocation, useOutlet } from 'react-router';
 import { LogoMark } from '../components/Logo';
-import { Composer } from '../features/tasks/Composer';
+import { Avatar, cx } from '../components/ui';
+import { HomePage } from '../features/home/HomePage';
 import { ExpertSheet } from '../features/maintenance/ExpertSheet';
+import { Composer } from '../features/tasks/Composer';
 import { TaskSheet } from '../features/tasks/TaskSheet';
+import { useIsDesktop } from '../lib/media';
+import { preloadHouseScene } from '../scene/HouseStage';
+import { usePrefersReducedMotion } from '../lib/theme';
 import { useAppData, useUi } from './context';
 
-const NAV: { to: string; label: string; icon: ComponentType<{ className?: string }> }[] = [
+const NAV: { to: string; label: string; icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
   { to: '/', label: 'Home', icon: House },
   { to: '/focus', label: 'Focus', icon: Target },
   { to: '/tasks', label: 'Tasks', icon: ListChecks },
@@ -22,110 +25,56 @@ function useFocusCount(): number {
   const { tasks, today, me } = useAppData();
   return useMemo(
     () =>
-      rankTasks(tasks, { today, userId: me.id }).filter(
-        ({ timing }) => timing.state === 'overdue' || timing.state === 'today',
-      ).length,
+      rankTasks(tasks, { today, userId: me.id }).filter(({ timing }) => timing.state === 'overdue' || timing.state === 'today')
+        .length,
     [tasks, today, me.id],
   );
 }
 
-function TabBar() {
+/** Slim icon rail on wide screens (phones navigate from the home panel instead). */
+function Rail() {
   const { openComposer } = useUi();
-  const focusCount = useFocusCount();
-  const [home, focus, tasks, settings] = NAV;
-  const tab = (item: (typeof NAV)[number], badge?: number) => (
-    <NavLink
-      key={item.to}
-      to={item.to}
-      end={item.to === '/'}
-      className={({ isActive }) =>
-        cx('relative flex flex-col items-center gap-0.5 pt-1 text-[10.5px] font-semibold transition-colors', isActive ? 'text-accent' : 'text-ink-3')
-      }
-    >
-      {({ isActive }) => (
-        <>
-          <span className="relative">
-            <item.icon className={cx('size-[23px] transition-transform', isActive && 'scale-105')} />
-            {badge ? (
-              <span className="absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-overdue px-1 text-[10px] font-bold text-white tabular">
-                {badge > 9 ? '9+' : badge}
-              </span>
-            ) : null}
-          </span>
-          {item.label}
-        </>
-      )}
-    </NavLink>
-  );
-  return (
-    <nav className="relative z-30 shrink-0 border-t border-line/70 bg-surface/90 pb-safe backdrop-blur-xl lg:hidden" aria-label="Main">
-      <div className="mx-auto grid h-[60px] max-w-md grid-cols-5 items-center">
-        {tab(home)}
-        {tab(focus, focusCount)}
-        <div className="flex justify-center">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={() => openComposer()}
-            aria-label="New task"
-            className="-mt-6 flex size-[56px] items-center justify-center rounded-[20px] bg-accent text-on-accent shadow-[0_12px_28px_-10px_var(--color-accent)]"
-          >
-            <Plus className="size-7" strokeWidth={2.4} />
-          </motion.button>
-        </div>
-        {tab(tasks)}
-        {tab(settings)}
-      </div>
-    </nav>
-  );
-}
-
-function Sidebar() {
-  const { openComposer } = useUi();
-  const { me, bootstrap } = useAppData();
+  const { me } = useAppData();
   const focusCount = useFocusCount();
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-line/70 bg-surface-2/60 px-4 py-6 lg:flex">
-      <div className="flex items-center gap-2.5 px-2">
-        <LogoMark size={34} />
-        <div className="leading-tight">
-          <p className="font-display text-[15px] font-semibold tracking-tight text-ink">{APP_NAME}</p>
-          <p className="text-[12px] text-ink-3">{bootstrap.household.name}</p>
-        </div>
-      </div>
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[76px] flex-col items-center border-r border-line bg-canvas py-5 lg:flex">
+      <LogoMark size={34} />
       <button
+        type="button"
         onClick={() => openComposer()}
-        className="mt-6 flex h-11 items-center justify-center gap-2 rounded-2xl bg-accent text-[14px] font-semibold text-on-accent shadow-[0_8px_20px_-10px_var(--color-accent)] transition active:scale-[0.98]"
+        aria-label="New task"
+        title="New task (N)"
+        className="mt-6 flex size-11 items-center justify-center rounded-full bg-accent text-on-accent transition hover:bg-accent-strong active:scale-95"
       >
-        <Plus className="size-5" /> New task <kbd className="ml-1 rounded bg-white/20 px-1.5 text-[11px]">N</kbd>
+        <Plus className="size-5" strokeWidth={2.2} />
       </button>
-      <nav className="mt-6 space-y-1" aria-label="Main">
+      <nav className="mt-6 flex flex-col items-center gap-1.5" aria-label="Main">
         {NAV.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
+            title={item.label}
             className={({ isActive }) =>
               cx(
-                'flex h-10 items-center gap-3 rounded-xl px-3 text-[14px] font-semibold transition',
-                isActive ? 'bg-surface text-ink shadow-card' : 'text-ink-2 hover:bg-sunken',
+                'relative flex w-[62px] flex-col items-center gap-1 rounded-2xl py-2 text-[10.5px] font-medium transition-colors',
+                isActive ? 'bg-sunken text-ink' : 'text-ink-3 hover:bg-surface-2 hover:text-ink-2',
               )
             }
           >
-            <item.icon className="size-[19px]" />
-            <span className="flex-1">{item.label}</span>
+            <item.icon className="size-[21px]" strokeWidth={1.7} />
+            {item.label}
             {item.to === '/focus' && focusCount > 0 && (
-              <span className="rounded-full bg-overdue px-1.5 text-[11px] font-bold text-white tabular">{focusCount}</span>
+              <span className="absolute top-1 right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-overdue px-1 text-[10px] font-bold text-white tabular">
+                {focusCount}
+              </span>
             )}
           </NavLink>
         ))}
       </nav>
-      <div className="mt-auto flex items-center gap-3 rounded-2xl px-2 py-2">
-        <Avatar member={me} size={32} decorative />
-        <div className="min-w-0 leading-tight">
-          <p className="truncate text-[14px] font-semibold text-ink">{me.name}</p>
-          <p className="truncate text-[12px] text-ink-3">{me.email}</p>
-        </div>
-      </div>
+      <NavLink to="/settings" className="mt-auto rounded-full ring-2 ring-line transition hover:ring-line-strong" aria-label={`${me.name} — settings`}>
+        <Avatar member={me} size={34} decorative />
+      </NavLink>
     </aside>
   );
 }
@@ -133,6 +82,28 @@ function Sidebar() {
 export function AppShell() {
   const { openComposer, composer } = useUi();
   const location = useLocation();
+  const outlet = useOutlet();
+  const desktop = useIsDesktop();
+  const reducedMotion = usePrefersReducedMotion();
+  const onHome = location.pathname === '/';
+  const page = useRef<HTMLElement>(null);
+  // Once a page has slid over it, the home screen is hidden outright (it stays mounted).
+  const [covered, setCovered] = useState(!onHome);
+  useEffect(() => {
+    if (onHome) {
+      setCovered(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setCovered(true), 450);
+    return () => window.clearTimeout(timer);
+  }, [onHome]);
+  useEffect(() => {
+    page.current?.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    preloadHouseScene();
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -147,16 +118,32 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, [openComposer, composer]);
 
+  // Pages slide over the home screen like a navigation stack; the house stays mounted below so
+  // coming back is instant (its render loop pauses while covered).
+  const slide = desktop || reducedMotion ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } } : { initial: { x: '100%' }, animate: { x: 0 }, exit: { x: '100%' } };
+
   return (
-    <div className="flex h-dvh flex-col lg:flex-row">
-      <Sidebar />
-      <main key={location.pathname} className="min-h-0 flex-1 overflow-y-auto">
-        <Outlet />
-      </main>
-      <TabBar />
+    <>
+      <Rail />
+      <div inert={!onHome} aria-hidden={onHome ? undefined : true} style={{ visibility: onHome || !covered ? undefined : 'hidden' }}>
+        <HomePage active={onHome} />
+      </div>
+      <AnimatePresence initial={false}>
+        {!onHome && (
+          <motion.main
+            ref={page}
+            key="page"
+            {...slide}
+            transition={{ type: 'spring', stiffness: 380, damping: 40, mass: 0.9 }}
+            className="fixed inset-0 z-30 overflow-y-auto overscroll-contain bg-canvas shadow-[-24px_0_48px_-24px_rgb(0_0_0/0.6)] lg:left-[76px] lg:shadow-none"
+          >
+            {outlet}
+          </motion.main>
+        )}
+      </AnimatePresence>
       <TaskSheet />
       <Composer />
       <ExpertSheet />
-    </div>
+    </>
   );
 }
