@@ -10,9 +10,7 @@ import {
   Compass,
   Copy,
   House,
-  LocateFixed,
   LogOut,
-  Moon,
   Plus,
   RotateCw,
   Send,
@@ -24,14 +22,13 @@ import {
   Trash2,
   UserPlus,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppData, useUi } from '../../app/context';
 import { useToast } from '../../components/Toast';
 import { PageHeader } from '../../components/nav';
 import { Avatar, Button, Card, cx, Segmented, Switch, TextInput } from '../../components/ui';
 import { formatClock, useDaylight } from '../../lib/daylight';
 import { setPrefs, usePrefs, type SceneQuality, type ThemeMode } from '../../lib/prefs';
-import { useDeviceLocation } from '../daylight/DaylightSheet';
 import { api, errorMessage } from '../../lib/api';
 import { currentSubscription, disablePush, enablePush } from '../../lib/push';
 import { isIOS, isStandalone, pushSupport } from '../../lib/pwa';
@@ -284,6 +281,17 @@ function NotificationPreferences() {
           </div>
         )}
       </div>
+      <Row title="Prayer times" detail="Fajr, Dhuhr, Asr, Maghrib and Isha, on the minute — even during quiet hours">
+        <Switch checked={prefs.prayers.enabled} onChange={(enabled) => update({ ...prefs, prayers: { ...prefs.prayers, enabled } })} label="Prayer time notifications" />
+      </Row>
+      <Row title="Dhuhr reminder" detail="15 minutes before Asr, while Dhuhr can still be prayed">
+        <Switch
+          checked={prefs.prayers.enabled && prefs.prayers.dhuhrReminder}
+          disabled={!prefs.prayers.enabled}
+          onChange={(dhuhrReminder) => update({ ...prefs, prayers: { ...prefs.prayers, dhuhrReminder } })}
+          label="Dhuhr reminder before Asr"
+        />
+      </Row>
       <Row title="When someone assigns me a task">
         <Switch checked={prefs.assignments.enabled} onChange={(enabled) => update({ ...prefs, assignments: { enabled } })} label="Assignment notifications" />
       </Row>
@@ -312,10 +320,6 @@ function Household() {
   const [invite, setInvite] = useState<{ url: string; expiresAt: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [name, setName] = useState(bootstrap.household.name);
-  const timeZones = useMemo(() => {
-    const zones = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
-    return zones.includes(bootstrap.household.timeZone) ? zones : [bootstrap.household.timeZone, ...zones];
-  }, [bootstrap.household.timeZone]);
 
   const patch = async (body: Record<string, unknown>) => {
     try {
@@ -343,20 +347,6 @@ function Household() {
           className="h-9 w-36 py-1.5 text-right"
           aria-label="Home name"
         />
-      </Row>
-      <Row title="Time zone" detail="Due dates and reminders follow it">
-        <select
-          value={bootstrap.household.timeZone}
-          onChange={(e) => void patch({ timeZone: e.target.value })}
-          className="h-9 max-w-44 rounded-xl bg-sunken px-2 text-[13px] text-ink outline-none"
-          aria-label="Time zone"
-        >
-          {timeZones.map((tz) => (
-            <option key={tz} value={tz}>
-              {tz.replace(/_/g, ' ')}
-            </option>
-          ))}
-        </select>
       </Row>
       {members.map((member) => (
         <Row
@@ -530,37 +520,6 @@ function HouseScene3D() {
   );
 }
 
-function DaylightLocation() {
-  const prefs = usePrefs();
-  const daylight = useDaylight();
-  const location = useDeviceLocation();
-  const { location: where, today, timeZone } = daylight;
-  return (
-    <>
-      <Row
-        icon={<Moon className="size-[18px]" />}
-        title={`Sunrise ${formatClock(today.sunrise, timeZone)} · Sunset ${formatClock(today.sunset, timeZone)}`}
-        detail={where.source === 'device' ? `This device · ${where.lat.toFixed(2)}, ${where.lng.toFixed(2)}` : `${where.label}, from your time zone`}
-      />
-      <Row
-        icon={<LocateFixed className="size-[18px]" />}
-        title="Precise location"
-        detail="Uses this device’s position for the sky. It stays on this device."
-      >
-        {prefs.location.mode === 'device' ? (
-          <Button size="sm" variant="ghost" onClick={() => setPrefs({ location: { mode: 'auto' } })}>
-            Turn off
-          </Button>
-        ) : (
-          <Button size="sm" variant="soft" loading={location.busy} onClick={location.request}>
-            Use
-          </Button>
-        )}
-      </Row>
-    </>
-  );
-}
-
 export function SettingsPage() {
   const { me, bootstrap } = useAppData();
   const { setExpertOpen } = useUi();
@@ -604,10 +563,6 @@ export function SettingsPage() {
 
       <Section title="3D house" description="How the live model on the home screen looks and behaves on this device.">
         <HouseScene3D />
-      </Section>
-
-      <Section title="Daylight" description="The sky over the house follows the real sun and moon.">
-        <DaylightLocation />
       </Section>
 
       <Section title="Notifications" description="Reminders arrive as push notifications on your phone.">

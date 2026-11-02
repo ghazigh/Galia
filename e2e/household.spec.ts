@@ -104,11 +104,13 @@ test('a quick win shows up in Focus under the 5-minute filter', async () => {
 
 test('the daylight panel follows the real sun and previews the day in 3D', async () => {
   const page = ownerPage;
-  await page.getByRole('button', { name: /^Daylight: (Sunrise|Sunset)/ }).click();
+  await page.getByRole('button', { name: 'Daylight and prayer times' }).click();
   const sheet = page.getByRole('dialog', { name: 'Daylight' });
-  await expect(sheet.getByText('Sunrise', { exact: true })).toBeVisible();
   await expect(sheet.getByText('Sunset', { exact: true })).toBeVisible();
-  await expect(sheet.getByText(/Toronto/).first()).toBeVisible();
+  await expect(sheet.getByText('Saint-Philippe, QC').first()).toBeVisible();
+  const prayers = sheet.getByRole('region', { name: 'Prayer times' });
+  for (const name of ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']) await expect(prayers.getByText(name, { exact: true })).toBeVisible();
+  await expect(prayers.getByText(/Reminder to pray Dhuhr at/)).toBeVisible();
   await sheet.getByRole('button', { name: 'Preview the day in 3D' }).click();
   const scrubber = page.getByRole('group', { name: 'Sky preview' });
   await expect(scrubber.getByRole('slider', { name: 'Time of day' })).toBeVisible();

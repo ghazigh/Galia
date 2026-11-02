@@ -21,8 +21,9 @@ export function accountRoutes(ctx: AppContext) {
 
   app.patch('/me', async (c) => {
     const actor = requireActor(c);
-    const patch = await parseBody(c, profilePatchSchema);
-    updateUser(ctx.db, actor.user.id, patch);
+    const { prefs, ...patch } = await parseBody(c, profilePatchSchema);
+    // Settings saved by an older app version keep the prayer preferences already stored.
+    updateUser(ctx.db, actor.user.id, prefs ? { ...patch, prefs: { ...prefs, prayers: prefs.prayers ?? actor.user.prefs.prayers } } : patch);
     return c.json(bootstrapFor(ctx, loadActor(ctx, actor.user.id)!));
   });
 

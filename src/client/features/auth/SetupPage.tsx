@@ -1,3 +1,4 @@
+import { HOME } from '@shared/home';
 import type { SetupInput } from '@shared/schemas';
 import { SEED_GROUPS, SEED_TASKS, type SeedGroup } from '@shared/seed';
 import type { Bootstrap } from '@shared/types';
@@ -19,14 +20,6 @@ import { AuthLayout } from './AuthLayout';
 const STEPS = ['welcome', 'home', 'plan', 'account'] as const;
 type Step = (typeof STEPS)[number];
 
-function detectTimeZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Toronto';
-  } catch {
-    return 'America/Toronto';
-  }
-}
-
 export function SetupPage() {
   const qc = useQueryClient();
   const daylight = useDaylight();
@@ -36,7 +29,7 @@ export function SetupPage() {
   const [direction, setDirection] = useState(1);
   const [form, setForm] = useState<SetupInput>({
     householdName: 'Our home',
-    timeZone: detectTimeZone(),
+    timeZone: HOME.timeZone,
     name: '',
     email: '',
     password: '',
@@ -134,14 +127,11 @@ export function SetupPage() {
               <h1 className="font-display text-[26px] font-semibold tracking-[-0.02em] text-ink">Your home</h1>
               <p className="mt-1 text-[15px] text-ink-2">
                 The house map is set up for your three levels: garage and mechanical room below, living room, entry and
-                kitchen on the ground floor, three bedrooms and a bathroom upstairs, plus the backyard.
+                kitchen on the ground floor, two bedrooms, an office and a bathroom upstairs, plus the backyard.
               </p>
               <div className="mt-6 space-y-4">
                 <Field label="What do you call it?">
                   <TextInput value={form.householdName} onChange={(e) => setForm({ ...form, householdName: e.target.value })} />
-                </Field>
-                <Field label="Time zone" hint="Due dates and reminders follow it.">
-                  <TextInput value={form.timeZone} onChange={(e) => setForm({ ...form, timeZone: e.target.value })} />
                 </Field>
               </div>
               <div className="mt-8 flex gap-2">

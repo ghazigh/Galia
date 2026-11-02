@@ -1,3 +1,4 @@
+import { HOME } from '@shared/home';
 import type { ZoneSummary } from '@shared/status';
 import type { FixtureId, ZoneId } from '@shared/types';
 import { FIXTURES, zoneName } from '@shared/zones';
@@ -36,7 +37,7 @@ const VIEWS: Record<string, SceneView> = {
 /** Dev-only page for the 3D house (visit /__scene?view=ground&hour=21.5&inset=360). */
 export function ScenePlayground() {
   const params = new URLSearchParams(window.location.search);
-  const timeZone = params.get('tz') ?? 'America/Toronto';
+  const timeZone = HOME.timeZone;
   const [view, setView] = useState<SceneView>(VIEWS[params.get('view') ?? 'exterior'] ?? EXTERIOR);
   const [zone, setZone] = useState<ZoneId | null>((params.get('zone') as ZoneId) || null);
   const [fixture, setFixture] = useState<FixtureId | null>((params.get('fixture') as FixtureId) || null);
@@ -44,7 +45,7 @@ export function ScenePlayground() {
   const date = params.get('date') ?? '2026-11-01';
   const quality = (params.get('quality') as SceneQuality) || 'balanced';
   const inset = useRef(Number(params.get('inset') ?? 0));
-  const location = useSkyLocation(timeZone);
+  const location = useSkyLocation();
 
   const daylight = useMemo(() => {
     const at = hour === null ? new Date() : new Date(new Date(`${date}T00:00:00-04:00`).valueOf() + hour * 3_600_000);

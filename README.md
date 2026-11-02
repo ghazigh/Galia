@@ -41,11 +41,18 @@ the living room's porte-fenêtre opens straight onto the patio.
   Daylight, Settings) slides over the scene; the house stays centered in whatever space is left. Pages
   push over the home screen like a native navigation stack, and the scene pauses while it's covered.
 
+**Prayer times.** The Daylight panel lists today's five prayers (and sunrise), the next one highlighted
+with a countdown. Each member gets a push at Fajr, Dhuhr, Asr, Maghrib and Isha, on the minute and
+even during quiet hours, plus a reminder 15 minutes before Asr to pray Dhuhr in time — both can be
+turned off in Settings → Notifications.
+
 **A live sky.** The sky over the house is computed for your home, right now:
 
+- Everything follows the house: Saint-Philippe, QC, in Montréal time, whatever the phone's own time
+  zone. The app sets its clock from the server's (NTP-synced), so a phone running fast or slow
+  doesn't shift the sky, dates or prayer times.
 - The sun and moon are placed with real astronomy (SunCalc/Meeus formulas, unit-tested against
-  published sunrise times and moon phases) from the household's time zone — or, if you allow it, this
-  device's precise location (it never leaves the device).
+  published sunrise times and moon phases).
 - Daylight drives everything: the sky gradient, sunset glow and drifting clouds, stars at night, the
   moon's actual phase and tilt, sun and moon shadows, and the windows, porch lights and rooms warming
   up at dusk.
@@ -139,7 +146,7 @@ export PROJECT_ID=your-project REGION=northamerica-northeast1
 ./deploy/gcp/setup.sh     # APIs, bucket, service account, secrets (generates VAPID + cron secret)
 export VAPID_PUBLIC_KEY=… # printed by setup.sh
 export VAPID_SUBJECT=mailto:you@example.com
-./deploy/gcp/deploy.sh    # builds with Cloud Build, deploys, schedules reminders every 15 min
+./deploy/gcp/deploy.sh    # builds with Cloud Build, deploys, schedules reminders every minute
 ```
 
 **How the data is kept.** The app uses SQLite. On Cloud Run the disk is ephemeral, so the server
@@ -209,7 +216,7 @@ flowchart LR
   phone["iPhone PWA<br/>React · service worker"] -- HTTPS JSON --> run["Cloud Run<br/>Hono API + static app"]
   run --- db[("SQLite")]
   db -- snapshot after each write --> gcs[("Cloud Storage<br/>versioned")]
-  sched["Cloud Scheduler<br/>every 15 min"] -- X-Cron-Secret --> run
+  sched["Cloud Scheduler<br/>every minute"] -- X-Cron-Secret --> run
   run -- Web Push --> push["Apple / Google push"] --> phone
   run -- structured outputs --> ai["Azure: Claude on Foundry<br/>or Azure OpenAI"]
 ```
@@ -262,9 +269,11 @@ Playwright browsers don't match the pinned version, point it at any Chromium wit
   photo shows the entry on the other side), so the model follows the front photo; the long side
   without windows is drawn as a plain brick wall. Rooms can be renamed in Settings. The default
   deploy region is Montréal (`northamerica-northeast1`); change `REGION` as needed.
-- **Where the sun is.** Without location access the sky uses your time zone's principal city (Toronto
-  for America/Toronto) and assumes the front of the house faces away from the midday sun. Set the real
-  direction in Settings → 3D house, or allow precise location in the Daylight panel.
+- **Where the sun is.** The sky assumes the front of the house faces away from the midday sun. Set
+  the real direction in Settings → 3D house.
+- **Prayer times** use the ISNA method (Fajr and Isha at 15°) with the standard Asr, computed for
+  Saint-Philippe (`src/shared/prayer.ts`). If your mosque uses another convention (e.g. Hanafi Asr or
+  18° angles), change `ISNA` there.
 
 ## Next (PRD §10)
 

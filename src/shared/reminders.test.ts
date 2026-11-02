@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { deliverAfterQuietHours, planAssignment, planReminders, type PlannerUser } from './reminders';
+import { HOME } from './home';
+import { prayerTimes } from './prayer';
+import { deliverAfterQuietHours, planAssignment, planPrayers, planReminders, type PlannerUser } from './reminders';
 import { makeTask } from './testing';
 import { DEFAULT_NOTIFICATION_PREFS } from './types';
 
 const tz = 'America/Toronto';
-const user: PlannerUser = { id: 'u1', name: 'Ghazi', prefs: DEFAULT_NOTIFICATION_PREFS };
+// Task reminders are tested on their own; prayer pushes have their own suite below.
+const user: PlannerUser = { id: 'u1', name: 'Ghazi', prefs: { ...DEFAULT_NOTIFICATION_PREFS, prayers: { enabled: false, dhuhrReminder: false } } };
 // 2026-10-22 is a Thursday. Toronto is UTC−4 in October.
 const at = (localTime: string, date = '2026-10-22') => new Date(`${date}T${localTime}:00-04:00`);
 
@@ -84,5 +87,47 @@ describe('assignment pushes', () => {
     expect(deliverAfterQuietHours(late, tz, DEFAULT_NOTIFICATION_PREFS).toISOString()).toBe(
       at('07:00', '2026-10-23').toISOString(),
     );
+  });
+});
+
+describe('prayer notifications', () => {
+  const ghazi: PlannerUser = { id: 'u1', name: 'Ghazi', prefs: DEFAULT_NOTIFICATION_PREFS };
+  const times = prayerTimes('2026-11-02', HOME.lat, HOME.lng);
+  const minute = (at: Date, delta: number) => new Date(at.getTime() + delta * 60_000);
+
+  it('sends each prayer on its minute, in Montréal time', () => {
+    const [asr] = planPrayers(ghazi, times.asr, HOME.timeZone);
+    expect(asr).toMatchObject({ kind: 'prayer', key: 'prayer:2026-11-02:asr', title: '🕌 Asr', body: "It's time for Asr · 2:15 PM" });
+    for (const prayer of ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const) {
+      const keys = planPrayers(ghazi, minute(times[prayer], 1), HOME.timeZone).map((n) => n.key);
+      expect(keys).toContain(`prayer:2026-11-02:${prayer}`);
+    }
+  });
+
+  it('reminds about Dhuhr 15 minutes before Asr', () => {
+    const plan = planPrayers(ghazi, minute(times.asr, -15), HOME.timeZone);
+    expect(plan).toHaveLength(1);
+    expect(plan[0]).toMatchObject({ key: 'prayer:2026-11-02:dhuhr-reminder', title: '⏳ Dhuhr ends in 15 min' });
+    expect(plan[0].body).toContain('2:15 PM');
+  });
+
+  it('runs inside planReminders, every minute, without repeating or going stale', () => {
+    const keys = new Set<string>();
+    for (let t = new Date('2026-11-02T05:00:00Z'); t < new Date('2026-11-03T05:00:00Z'); t = minute(t, 1)) {
+      for (const n of planReminders({ now: t, timeZone: HOME.timeZone, users: [ghazi], tasks: [] })) {
+        if (n.kind === 'prayer') keys.add(n.key);
+      }
+    }
+    expect([...keys].sort()).toEqual(
+      ['asr', 'dhuhr', 'dhuhr-reminder', 'fajr', 'isha', 'maghrib'].map((k) => `prayer:2026-11-02:${k}`).sort(),
+    );
+    expect(planPrayers(ghazi, minute(times.isha, 11), HOME.timeZone)).toEqual([]);
+  });
+
+  it('respects the switches', () => {
+    const off = { ...ghazi, prefs: { ...ghazi.prefs, prayers: { enabled: false, dhuhrReminder: true } } };
+    expect(planPrayers(off, times.asr, HOME.timeZone)).toEqual([]);
+    const noReminder = { ...ghazi, prefs: { ...ghazi.prefs, prayers: { enabled: true, dhuhrReminder: false } } };
+    expect(planPrayers(noReminder, minute(times.asr, -15), HOME.timeZone)).toEqual([]);
   });
 });

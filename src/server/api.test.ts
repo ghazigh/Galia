@@ -49,7 +49,8 @@ describe('setup and sign-in', () => {
   it('creates the household, signs the owner in and seeds the expert schedule', async () => {
     const { owner, bootstrap } = await setUpHousehold();
     expect(bootstrap.me).toMatchObject({ name: 'Ghazi', role: 'owner' });
-    expect(bootstrap.household.timeZone).toBe('America/Toronto');
+    // The house is in Montréal whatever time zone the signing-up device sends.
+    expect(bootstrap.household.timeZone).toBe('America/Montreal');
     const tasks = (await owner.get('/api/tasks')).body as Task[];
     expect(tasks).toHaveLength(SEED_TASKS.length);
     expect(tasks.every((t) => t.kind === 'maintenance' && t.visibility === 'shared')).toBe(true);
@@ -265,6 +266,27 @@ describe('scheduled reminders', () => {
 
     const again = await cron.post('/api/cron/reminders', undefined, { 'x-cron-secret': 'cron-secret' });
     expect(again.body.queued).toBe(0);
+  });
+
+  it('sends each prayer on its minute, with the Dhuhr reminder before Asr, once', async () => {
+    const env = await setUpHousehold();
+    await env.owner.post('/api/push/subscribe', {
+      endpoint: 'https://push.example/ghazi',
+      keys: { p256dh: 'key', auth: 'auth' },
+    });
+    const cron = client(env.app);
+    const run = async (iso: string) => {
+      env.setNow(new Date(iso));
+      return cron.post('/api/cron/reminders', undefined, { 'x-cron-secret': 'cron-secret' });
+    };
+    const prayers = () => env.push.sent.filter((s) => s.payload.tag === 'prayer').map((s) => s.payload.title);
+    // 2026-11-02 in Montréal (EST, UTC−5): Asr at 14:15, so the reminder goes at 14:00.
+    await run('2026-11-02T19:00:00Z');
+    expect(prayers()).toEqual(['⏳ Dhuhr ends in 15 min']);
+    await run('2026-11-02T19:15:00Z');
+    await run('2026-11-02T19:16:00Z');
+    expect(prayers()).toEqual(['⏳ Dhuhr ends in 15 min', '🕌 Asr']);
+    expect(env.push.sent.at(-1)?.payload.body).toBe("It's time for Asr · 2:15 PM");
   });
 
   it('drops subscriptions the push service reports as gone', async () => {

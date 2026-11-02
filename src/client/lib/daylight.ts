@@ -13,15 +13,40 @@ import {
   type SkyPosition,
   type SunTimes,
 } from '@shared/astro';
-import { zonedNow, parseYmd } from '@shared/dates';
-import { approximateLocation } from '@shared/geo';
+import { addDays, parseYmd, zonedNow } from '@shared/dates';
+import { HOME } from '@shared/home';
+import { PRAYERS, prayerTimes, type Prayer, type PrayerTimes } from '@shared/prayer';
 import { useMemo, useSyncExternalStore } from 'react';
-import { usePrefs } from './prefs';
 
 // ── Clock: one shared ticker, plus an optional "preview" time for scrubbing the sky ─────────────
 
 const TICK_MS = 30_000;
-let now = Date.now();
+/** Server clock minus device clock: phones can run minutes fast or slow. */
+let offset = 0;
+let lastSync = 0;
+/** The current moment by the server's clock (NTP-synced), not the device's. */
+export function clockNow(): number {
+  return Date.now() + offset;
+}
+
+/** Measures the device clock against the server's, at most every ten minutes. */
+async function syncClock() {
+  if (typeof fetch === 'undefined' || Date.now() - lastSync < 10 * 60_000) return;
+  lastSync = Date.now();
+  try {
+    const sent = performance.now();
+    const res = await fetch('/api/time', { cache: 'no-store', credentials: 'same-origin' });
+    const trip = performance.now() - sent;
+    const { now: server } = (await res.json()) as { now: number };
+    // The server read its clock about halfway through the round trip.
+    if (Number.isFinite(server) && trip < 5_000) offset = server - (Date.now() - trip / 2);
+    tick();
+  } catch {
+    lastSync = 0; // offline: try again on the next tick
+  }
+}
+
+let now = clockNow();
 let preview: number | null = null;
 let snapshot = { at: new Date(now), live: true };
 const clockListeners = new Set<() => void>();
@@ -36,8 +61,9 @@ function emit() {
 }
 
 function tick() {
-  now = Date.now();
+  now = clockNow();
   emit();
+  void syncClock();
 }
 
 function subscribeClock(listener: () => void) {
@@ -61,7 +87,7 @@ const getSnapshot = () => snapshot;
 /** Shows the sky at another moment (the Daylight sheet's time scrubber); null returns to live. */
 export function setSkyPreview(at: Date | null) {
   preview = at ? at.valueOf() : null;
-  if (preview === null) now = Date.now();
+  if (preview === null) now = clockNow();
   emit();
 }
 
@@ -70,35 +96,11 @@ export function useSkyTime(): { at: Date; live: boolean } {
   return useSyncExternalStore(subscribeClock, getSnapshot, getSnapshot);
 }
 
-// ── Which time zone the sky follows (the household's once signed in, else the browser's) ──────
+// ── Where and when: always the house, in Montréal time ──────────────────────────────────────
 
-function browserTimeZone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
-}
-
-let activeTimeZone = typeof window === 'undefined' ? 'UTC' : browserTimeZone();
-const zoneListeners = new Set<() => void>();
-
+/** Kept for callers; the sky always follows the house's time zone. */
 export function setSkyTimeZone(timeZone: string | null) {
-  const next = timeZone || browserTimeZone();
-  if (next === activeTimeZone) return;
-  activeTimeZone = next;
-  for (const listener of zoneListeners) listener();
-}
-
-function useSkyTimeZone(): string {
-  return useSyncExternalStore(
-    (listener) => {
-      zoneListeners.add(listener);
-      return () => zoneListeners.delete(listener);
-    },
-    () => activeTimeZone,
-    () => activeTimeZone,
-  );
+  void timeZone;
 }
 
 // ── Daylight ──────────────────────────────────────────────────────────────────────────────────
@@ -106,9 +108,13 @@ function useSkyTimeZone(): string {
 export interface SkyLocation {
   lat: number;
   lng: number;
-  /** "Toronto", "This device" … */
+  /** "Saint-Philippe, QC" */
   label: string;
-  source: 'device' | 'time-zone';
+}
+
+export interface NextPrayer {
+  prayer: Prayer;
+  at: Date;
 }
 
 export interface Daylight {
@@ -127,15 +133,21 @@ export interface Daylight {
   /** Sun times for the local calendar day of `at`. */
   today: SunTimes;
   next: DaylightEvent | null;
+  /** Today's prayer times at the house, and the next one to come. */
+  prayers: PrayerTimes;
+  nextPrayer: NextPrayer;
 }
 
-export function useSkyLocation(timeZone: string): SkyLocation {
-  const { location } = usePrefs();
-  return useMemo(() => {
-    if (location.mode === 'device') return { lat: location.lat, lng: location.lng, label: 'This device', source: 'device' };
-    const approx = approximateLocation(timeZone);
-    return { lat: approx.lat, lng: approx.lng, label: approx.city ?? timeZone, source: 'time-zone' };
-  }, [location, timeZone]);
+const HOME_LOCATION: SkyLocation = { lat: HOME.lat, lng: HOME.lng, label: HOME.label };
+
+export function useSkyLocation(): SkyLocation {
+  return HOME_LOCATION;
+}
+
+/** The next prayer after `at` (tomorrow's Fajr once Isha has passed). */
+export function nextPrayerAfter(at: Date, today: PrayerTimes): NextPrayer {
+  for (const prayer of PRAYERS) if (today[prayer] > at) return { prayer, at: today[prayer] };
+  return { prayer: 'fajr', at: prayerTimes(addDays(today.date, 1), HOME.lat, HOME.lng).fajr };
 }
 
 export function computeDaylight(at: Date, live: boolean, timeZone: string, location: SkyLocation): Daylight {
@@ -143,6 +155,7 @@ export function computeDaylight(at: Date, live: boolean, timeZone: string, locat
   const sun = sunPosition(at, lat, lng);
   const { y, m, d } = parseYmd(zonedNow(timeZone, at).date);
   const today = sunTimes(solarNoonOf(y, m, d, lng), lat, lng);
+  const prayers = prayerTimes(zonedNow(timeZone, at).date, HOME.lat, HOME.lng);
   return {
     at,
     live,
@@ -156,16 +169,15 @@ export function computeDaylight(at: Date, live: boolean, timeZone: string, locat
     isNight: sun.altitude < (-0.833 * Math.PI) / 180,
     today,
     next: nextSunEvent(at, lat, lng),
+    prayers,
+    nextPrayer: nextPrayerAfter(at, prayers),
   };
 }
 
-/** Live sun and moon for the household (or a previewed moment), refreshed every 30 seconds. */
-export function useDaylight(timeZoneOverride?: string): Daylight {
-  const activeZone = useSkyTimeZone();
-  const timeZone = timeZoneOverride ?? activeZone;
+/** Live sun, moon and prayer times at the house (or a previewed moment), every 30 seconds. */
+export function useDaylight(): Daylight {
   const { at, live } = useSkyTime();
-  const location = useSkyLocation(timeZone);
-  return useMemo(() => computeDaylight(at, live, timeZone, location), [at, live, timeZone, location]);
+  return useMemo(() => computeDaylight(at, live, HOME.timeZone, HOME_LOCATION), [at, live]);
 }
 
 /** "16:52" in the household's time zone. */

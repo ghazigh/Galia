@@ -1,10 +1,10 @@
 import type { HouseHealth } from '@shared/status';
-import { ChevronDown, Settings, Sun, Sunrise, Sunset, UserPlus } from 'lucide-react';
+import { ChevronDown, Settings, Sun, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { useAppData } from '../../app/context';
 import { Menu } from '../../components/Menu';
 import { Avatar, cx } from '../../components/ui';
-import { formatClock, type Daylight } from '../../lib/daylight';
+import type { Daylight } from '../../lib/daylight';
 import { greeting } from '../../lib/today';
 import { MoonIcon } from '../daylight/MoonIcon';
 
@@ -14,24 +14,18 @@ function statusLine(health: HouseHealth, attention: number): { text: string; dot
   return { text: 'On track', dot: 'bg-[#3ccf8e]' };
 }
 
-/** Next sunrise/sunset, or the moon at night. */
+/** Sun or moon: opens the Daylight panel (sky, prayer times). */
 export function DaylightChip({ daylight, onClick }: { daylight: Daylight; onClick: () => void }) {
-  const { next, timeZone, isNight, illumination } = daylight;
-  const Icon = next?.kind === 'sunset' ? Sunset : Sunrise;
-  const when = next ? formatClock(next.at, timeZone) : null;
-  const label = next ? `${next.kind === 'sunset' ? 'Sunset' : 'Sunrise'} ${when}` : isNight ? 'Polar night' : 'Midnight sun';
+  const { isNight, illumination } = daylight;
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={`Daylight: ${label}. Open daylight details`}
-      className="flex h-10 items-center gap-2 rounded-full bg-black/25 pr-3.5 pl-3 text-[13px] font-medium text-white/90 backdrop-blur-md transition hover:bg-black/35 active:scale-95"
+      aria-label="Daylight and prayer times"
+      title="Daylight and prayer times"
+      className="flex size-10 items-center justify-center rounded-full bg-black/25 text-white/90 backdrop-blur-md transition hover:bg-black/35 active:scale-95"
     >
-      {isNight ? <MoonIcon phase={illumination.phase} size={17} className="text-[#e9e4d6]" /> : <Sun className="size-[17px] text-[#ffd27a]" strokeWidth={1.8} />}
-      <span className="flex items-center gap-1 tabular">
-        <Icon className="size-3.5 opacity-70" strokeWidth={1.8} />
-        {when ?? label}
-      </span>
+      {isNight ? <MoonIcon phase={illumination.phase} size={18} className="text-[#e9e4d6]" /> : <Sun className="size-[18px] text-[#ffd27a]" strokeWidth={1.8} />}
     </button>
   );
 }

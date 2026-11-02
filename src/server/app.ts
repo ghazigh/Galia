@@ -54,6 +54,9 @@ export function createApp(ctx: AppContext): Hono<Env> {
     }),
   );
 
+  // Clients set their clock from this (the phone's own clock can be minutes off).
+  app.get('/api/time', (c) => c.json({ now: Date.now() }));
+
   app.route('/api', authRoutes(ctx, limit));
   app.route('/api', accountRoutes(ctx));
   app.route('/api', taskRoutes(ctx));
