@@ -64,9 +64,10 @@ export function isZoneId(value: unknown): value is ZoneId {
   return typeof value === 'string' && ZONE_BY_ID.has(value as ZoneId);
 }
 
-/** Display name, honoring per-household renames ("Bedroom 3" → "Office"). */
+/** Display name. Room names are fixed (renaming was removed); `household` is ignored. */
 export function zoneName(id: ZoneId, household?: Pick<Household, 'zoneNames'> | null): string {
-  return household?.zoneNames?.[id]?.trim() || zoneDef(id).name;
+  void household;
+  return zoneDef(id).name;
 }
 
 export function zonesOnLevel(level: LevelId): ZoneDef[] {

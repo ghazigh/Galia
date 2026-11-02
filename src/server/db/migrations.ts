@@ -131,4 +131,7 @@ export const MIGRATIONS: readonly string[] = [
     fetched_at TEXT NOT NULL
   );
   `,
+  /* 5 — room names are fixed: drop any renames */ `
+  UPDATE households SET zone_names = '{}';
+  `,
 ];
