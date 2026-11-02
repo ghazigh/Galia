@@ -55,24 +55,6 @@ function inWindow(nowMinutes: number, startHm: string, catchUp: number): boolean
   return nowMinutes >= start && nowMinutes < start + catchUp;
 }
 
-export function inQuietHours(nowMinutes: number, prefs: NotificationPrefs): boolean {
-  if (!prefs.quietHours.enabled) return false;
-  const start = parseHm(prefs.quietHours.start);
-  const end = parseHm(prefs.quietHours.end);
-  if (start === end) return false;
-  return start < end
-    ? nowMinutes >= start && nowMinutes < end
-    : nowMinutes >= start || nowMinutes < end;
-}
-
-/** Instant at which an event-driven push may go out (now, or when quiet hours end). */
-export function deliverAfterQuietHours(now: Date, timeZone: string, prefs: NotificationPrefs): Date {
-  const { minutes } = zonedNow(timeZone, now);
-  if (!inQuietHours(minutes, prefs)) return now;
-  const wait = (parseHm(prefs.quietHours.end) - minutes + 1440) % 1440;
-  return new Date(now.getTime() + wait * 60_000);
-}
-
 function listTitles(titles: string[], max = 3): string {
   const shown = titles.slice(0, max);
   const rest = titles.length - shown.length;
@@ -180,7 +162,7 @@ function clockTime(at: Date, timeZone: string): string {
 
 /**
  * Prayer pushes due at `now`: each of the five prayers at its time, plus a reminder before Asr
- * so Dhuhr isn't missed. They ignore quiet hours (Fajr is before most people's quiet hours end).
+ * so Dhuhr isn't missed.
  */
 export function planPrayers(user: PlannerUser, now: Date, timeZone: string, timesFor: (date: Ymd) => PrayerTimes = calculatedTimes): PlannedNotification[] {
   const { prayers } = user.prefs;
@@ -272,9 +254,8 @@ export function planAssignment(input: {
   assignee: PlannerUser;
   assignerName: string;
   now: Date;
-  timeZone: string;
 }): PlannedNotification | null {
-  const { task, assignee, assignerName, now, timeZone } = input;
+  const { task, assignee, assignerName, now } = input;
   if (!assignee.prefs.assignments.enabled) return null;
   return {
     userId: assignee.id,
@@ -284,7 +265,7 @@ export function planAssignment(input: {
     body: task.title,
     url: `/task/${task.id}`,
     tag: `assign-${task.id}`,
-    deliverAfter: deliverAfterQuietHours(now, timeZone, assignee.prefs).toISOString(),
+    deliverAfter: now.toISOString(),
   };
 }
 
@@ -297,9 +278,8 @@ export function planPoke(input: {
   target: PlannerUser;
   pokerName: string;
   now: Date;
-  timeZone: string;
 }): PlannedNotification {
-  const { task, target, pokerName, now, timeZone } = input;
+  const { task, target, pokerName, now } = input;
   const bucket = Math.floor(now.getTime() / (POKE_COOLDOWN_MINUTES * 60_000));
   return {
     userId: target.id,
@@ -310,6 +290,6 @@ export function planPoke(input: {
     body: `Have a look at “${task.title}”`,
     url: `/task/${task.id}`,
     tag: `poke-${task.id}`,
-    deliverAfter: deliverAfterQuietHours(now, timeZone, target.prefs).toISOString(),
+    deliverAfter: now.toISOString(),
   };
 }

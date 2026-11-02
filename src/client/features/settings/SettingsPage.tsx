@@ -281,7 +281,7 @@ function NotificationPreferences() {
           </div>
         )}
       </div>
-      <Row title="Prayer times" detail="Fajr, Dhuhr, Asr, Maghrib and Isha, on the minute — even during quiet hours">
+      <Row title="Prayer times" detail="Fajr, Dhuhr, Asr, Maghrib and Isha, on the minute">
         <Switch checked={prefs.prayers.enabled} onChange={(enabled) => update({ ...prefs, prayers: { ...prefs.prayers, enabled } })} label="Prayer time notifications" />
       </Row>
       <Row title="Dhuhr reminder" detail="15 minutes before Asr, while Dhuhr can still be prayed">
@@ -295,20 +295,6 @@ function NotificationPreferences() {
       <Row title="When someone assigns me a task">
         <Switch checked={prefs.assignments.enabled} onChange={(enabled) => update({ ...prefs, assignments: { enabled } })} label="Assignment notifications" />
       </Row>
-      <div className="py-3.5">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium text-ink">Quiet hours</p>
-            <p className="text-[12.5px] text-ink-3">Assignments wait until morning</p>
-          </div>
-          <Switch checked={prefs.quietHours.enabled} onChange={(enabled) => update({ ...prefs, quietHours: { ...prefs.quietHours, enabled } })} label="Quiet hours" />
-        </div>
-        <div className="mt-3 flex items-center gap-2">
-          <TimeInput value={prefs.quietHours.start} disabled={!prefs.quietHours.enabled} onChange={(start) => update({ ...prefs, quietHours: { ...prefs.quietHours, start } })} label="Quiet hours start" />
-          <span className="text-ink-3">to</span>
-          <TimeInput value={prefs.quietHours.end} disabled={!prefs.quietHours.enabled} onChange={(end) => update({ ...prefs, quietHours: { ...prefs.quietHours, end } })} label="Quiet hours end" />
-        </div>
-      </div>
     </>
   );
 }

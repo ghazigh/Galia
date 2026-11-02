@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { HOME } from './home';
 import { prayerTimes } from './prayer';
-import { deliverAfterQuietHours, planAssignment, planPrayers, planReminders, type PlannerUser } from './reminders';
+import { planAssignment, planPrayers, planReminders, type PlannerUser } from './reminders';
 import { makeTask } from './testing';
 import { DEFAULT_NOTIFICATION_PREFS } from './types';
 
@@ -73,20 +73,12 @@ describe('assignment pushes', () => {
       assignee: user,
       assignerName: 'Sam',
       now,
-      timeZone: tz,
     });
     expect(planned).toMatchObject({
       title: 'Sam assigned you a task',
       body: 'Book car service',
       deliverAfter: now.toISOString(),
     });
-  });
-
-  it('wait for quiet hours to end', () => {
-    const late = at('23:30');
-    expect(deliverAfterQuietHours(late, tz, DEFAULT_NOTIFICATION_PREFS).toISOString()).toBe(
-      at('07:00', '2026-10-23').toISOString(),
-    );
   });
 });
 

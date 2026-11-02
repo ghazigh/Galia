@@ -139,7 +139,7 @@ describe('tasks', () => {
     const vent = tasks.find((t) => t.seedKey === 'dryer-vent-cleaning')!;
     const poke = await env.owner.post(`/api/tasks/${vent.id}/poke`, { userId: partnerId });
     expect(poke.status).toBe(200);
-    expect(poke.body).toEqual({ notificationsOn: true, heldUntil: null });
+    expect(poke.body).toEqual({ notificationsOn: true });
     // Sent before the request answers: nothing is left running in the background.
     expect(env.push.sent.map((s) => s.payload)).toEqual([
       expect.objectContaining({ title: '👉 Ghazi poked you', url: `/task/${vent.id}` }),
@@ -150,18 +150,15 @@ describe('tasks', () => {
     expect((await env.owner.post(`/api/tasks/${vent.id}/poke`, { userId: partnerId })).status).toBe(200);
   });
 
-  it('holds a poke until the end of quiet hours and says when it will arrive', async () => {
+  it('delivers a poke right away, even late at night', async () => {
     await partner.post('/api/push/subscribe', {
       endpoint: 'https://push.example/sam',
       keys: { p256dh: 'key', auth: 'auth' },
     });
     const task = await env.owner.post('/api/tasks', { title: 'Take out the recycling' });
-    env.setNow(new Date('2026-10-23T03:00:00Z')); // 23:00 in Toronto
+    env.setNow(new Date('2026-10-23T03:00:00Z')); // 23:00 in Montréal
     const poke = await env.owner.post(`/api/tasks/${task.body.id}/poke`, { userId: partnerId });
-    expect(poke.body).toEqual({ notificationsOn: true, heldUntil: '2026-10-23T11:00:00.000Z' });
-    expect(env.push.sent).toHaveLength(0);
-    env.setNow(new Date('2026-10-23T11:05:00Z'));
-    await env.ctx.notifier.dispatch();
+    expect(poke.body).toEqual({ notificationsOn: true });
     expect(env.push.sent).toHaveLength(1);
   });
 
@@ -173,7 +170,7 @@ describe('tasks', () => {
     expect((await env.owner.post(`/api/tasks/${shared.body.id}/poke`, { userId: meId })).status).toBe(422);
     expect((await env.owner.post(`/api/tasks/${shared.body.id}/poke`, { userId: 'nobody' })).status).toBe(422);
     const partnerPokes = await partner.post(`/api/tasks/${shared.body.id}/poke`, { userId: meId });
-    expect(partnerPokes.body).toEqual({ notificationsOn: false, heldUntil: null });
+    expect(partnerPokes.body).toEqual({ notificationsOn: false });
   });
 
   it('rejects assigning to someone outside the household', async () => {

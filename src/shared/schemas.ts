@@ -108,7 +108,6 @@ export const notificationPrefsSchema = z.object({
       .max(8),
   }),
   assignments: z.object({ enabled: z.boolean() }),
-  quietHours: z.object({ enabled: z.boolean(), start: hm, end: hm }),
   // Optional so an app version from before prayer times can still save its settings.
   prayers: z.object({ enabled: z.boolean(), dhuhrReminder: z.boolean() }).optional(),
 });

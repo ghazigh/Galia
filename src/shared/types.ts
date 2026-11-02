@@ -160,7 +160,6 @@ export interface NotificationPrefs {
   safetyAlerts: { enabled: boolean; time: string };
   quickWins: { enabled: boolean; windows: QuickWinWindow[] };
   assignments: { enabled: boolean };
-  quietHours: { enabled: boolean; start: string; end: string };
   /** A push at each of the five prayers, and one 15 minutes before Asr while Dhuhr can still be prayed. */
   prayers: { enabled: boolean; dhuhrReminder: boolean };
 }
@@ -176,7 +175,6 @@ export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefs = {
     ],
   },
   assignments: { enabled: true },
-  quietHours: { enabled: true, start: '22:00', end: '07:00' },
   prayers: { enabled: true, dhuhrReminder: true },
 };
 
