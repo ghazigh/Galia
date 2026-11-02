@@ -17,6 +17,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     maxMembers: 3,
     cronSecret: 'cron-secret',
     reminderIntervalMinutes: 0,
+    mosquePrayerUrl: null,
     vapid: { publicKey: 'test-public-key', privateKey: 'test-private-key', subject: 'mailto:test@example.com' },
     gcs: null,
     ai: {
@@ -41,7 +42,7 @@ export class FakePushSender implements PushSender {
   }
 }
 
-export function createTestApp(options: { now?: () => Date; ai?: AiProvider | null; config?: Partial<Config> } = {}) {
+export function createTestApp(options: { now?: () => Date; ai?: AiProvider | null; config?: Partial<Config>; fetch?: typeof fetch } = {}) {
   const db = openDatabase(':memory:');
   const push = new FakePushSender();
   let clock = options.now ?? (() => new Date());
@@ -52,6 +53,7 @@ export function createTestApp(options: { now?: () => Date; ai?: AiProvider | nul
     ai: options.ai ?? null,
     persistence: new LocalPersistence(),
     now: () => clock(),
+    fetch: options.fetch,
   };
   const app = createApp(ctx);
   return {

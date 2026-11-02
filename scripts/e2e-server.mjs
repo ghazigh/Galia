@@ -18,6 +18,8 @@ const server = spawn(process.execPath, ['dist/server/index.js'], {
   env: {
     ...process.env,
     NODE_ENV: 'production',
+    // No calls to the mosque's site from tests: prayer times fall back to the calculation.
+    MOSQUE_PRAYER_URL: 'off',
     PORT: process.env.E2E_PORT ?? '4321',
     DATABASE_PATH: path.join(dir, 'household.db'),
     PASSWORD_SCRYPT_N: '16384',

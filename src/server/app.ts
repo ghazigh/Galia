@@ -15,6 +15,10 @@ import { cronRoutes } from './routes/cron';
 import { pushRoutes } from './routes/push';
 import { taskRoutes } from './routes/tasks';
 import { HttpError } from './util';
+import { prayerDay, refreshMosqueTimes } from './services/prayers';
+import { requireActor } from './http';
+import { addDays, todayIn } from '@shared/dates';
+import { HOME } from '@shared/home';
 
 const AI_STATUS = {
   auth: 503,
@@ -56,6 +60,14 @@ export function createApp(ctx: AppContext): Hono<Env> {
 
   // Clients set their clock from this (the phone's own clock can be minutes off).
   app.get('/api/time', (c) => c.json({ now: Date.now() }));
+
+  // Today's and tomorrow's adhan times (the mosque's, else calculated) for the Daylight panel.
+  app.get('/api/prayer-times', async (c) => {
+    requireActor(c);
+    await refreshMosqueTimes(ctx);
+    const today = todayIn(HOME.timeZone, ctx.now());
+    return c.json({ today: prayerDay(ctx, today), tomorrow: prayerDay(ctx, addDays(today, 1)) });
+  });
 
   app.route('/api', authRoutes(ctx, limit));
   app.route('/api', accountRoutes(ctx));

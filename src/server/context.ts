@@ -14,6 +14,8 @@ export interface AppContext {
   ai: AiProvider | null;
   persistence: Persistence;
   now: () => Date;
+  /** Outbound HTTP (the mosque's prayer times); tests pass a fake. */
+  fetch?: typeof fetch;
 }
 
 /** The signed-in user plus their household. */

@@ -26,6 +26,7 @@ import { NavRow, QuickAction } from '../../components/nav';
 import { Button, cx, EmptyState, IconButton } from '../../components/ui';
 import { formatClock, type Daylight } from '../../lib/daylight';
 import { PRAYER_NAMES } from '@shared/prayer';
+import { usePrayers } from '../../lib/prayers';
 import { levelZones } from '../../scene/layout';
 import { useOpenTask } from '../tasks/actions';
 import { TaskRow } from '../tasks/TaskRow';
@@ -115,7 +116,7 @@ export function OverviewPanel({
   const todos = open.filter((t) => t.kind === 'todo');
   const fromPartner = partner ? todos.filter((t) => t.assigneeId === me.id && t.assignedById === partner.id).length : 0;
   const urgent = attention.filter((r) => r.timing.state === 'overdue' || r.timing.state === 'today').length;
-  const { nextPrayer } = daylight;
+  const { next: nextPrayer } = usePrayers(daylight);
 
   return (
     <div className="px-2 pb-4">

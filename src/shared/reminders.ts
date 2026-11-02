@@ -1,6 +1,6 @@
 import { addDays, parseHm, zonedNow, type Ymd } from './dates';
 import { HOME } from './home';
-import { PRAYER_NAMES, PRAYERS, prayerTimes } from './prayer';
+import { PRAYER_NAMES, PRAYERS, prayerTimes, type PrayerTimes } from './prayer';
 import { isActionable, rankTasks, scoreTask } from './priority';
 import { canView, isMine, taskTiming } from './status';
 import type { NotificationPrefs, Task } from './types';
@@ -34,7 +34,11 @@ export interface PlanInput {
   users: PlannerUser[];
   tasks: Task[];
   memberName?: (id: string) => string | undefined;
+  /** A day's adhan times (the mosque's); defaults to the calculation. */
+  prayerTimesFor?: (date: Ymd) => PrayerTimes;
 }
+
+const calculatedTimes = (date: Ymd) => prayerTimes(date, HOME.lat, HOME.lng);
 
 /** A scheduled reminder still goes out if the cron run lands within this many minutes after its time. */
 const DIGEST_CATCH_UP_MINUTES = 120;
@@ -178,7 +182,7 @@ function clockTime(at: Date, timeZone: string): string {
  * Prayer pushes due at `now`: each of the five prayers at its time, plus a reminder before Asr
  * so Dhuhr isn't missed. They ignore quiet hours (Fajr is before most people's quiet hours end).
  */
-export function planPrayers(user: PlannerUser, now: Date, timeZone: string): PlannedNotification[] {
+export function planPrayers(user: PlannerUser, now: Date, timeZone: string, timesFor: (date: Ymd) => PrayerTimes = calculatedTimes): PlannedNotification[] {
   const { prayers } = user.prefs;
   if (!prayers?.enabled) return [];
   const today = zonedNow(timeZone, now).date;
@@ -186,7 +190,7 @@ export function planPrayers(user: PlannerUser, now: Date, timeZone: string): Pla
   const due = (at: Date) => now.getTime() >= at.getTime() && now.getTime() < at.getTime() + PRAYER_CATCH_UP_MINUTES * 60_000;
   // Yesterday too, in case a late prayer (Isha in midsummer) crosses midnight.
   for (const date of [addDays(today, -1), today]) {
-    const times = prayerTimes(date, HOME.lat, HOME.lng);
+    const times = timesFor(date);
     for (const prayer of PRAYERS) {
       const at = times[prayer];
       if (!due(at)) continue;
@@ -257,7 +261,7 @@ export function planReminders(input: PlanInput): PlannedNotification[] {
       }
     }
 
-    planned.push(...planPrayers(user, now, timeZone));
+    planned.push(...planPrayers(user, now, timeZone, input.prayerTimesFor));
   }
   return planned;
 }

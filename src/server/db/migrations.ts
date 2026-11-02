@@ -124,4 +124,11 @@ export const MIGRATIONS: readonly string[] = [
   /* 3 — the house is in Montréal: dates, reminders and prayer times all follow its clock */ `
   UPDATE households SET time_zone = 'America/Montreal';
   `,
+  /* 4 — the mosque's adhan times, one row per day as published */ `
+  CREATE TABLE prayer_times (
+    date TEXT PRIMARY KEY,
+    times TEXT NOT NULL,
+    fetched_at TEXT NOT NULL
+  );
+  `,
 ];

@@ -1,3 +1,4 @@
+import { toPrayerTimes } from '@shared/prayer';
 import { planReminders } from '@shared/reminders';
 import type { AppContext } from '../context';
 import { listHouseholds } from '../repos/households';
@@ -5,6 +6,7 @@ import { listSubscriptions } from '../repos/push';
 import { listHouseholdTasks } from '../repos/tasks';
 import { listUsers } from '../repos/users';
 import type { DispatchResult } from './notifications';
+import { prayerDay, refreshMosqueTimes } from './prayers';
 
 export interface ReminderRunResult {
   planned: number;
@@ -15,6 +17,9 @@ export interface ReminderRunResult {
 /** Plans scheduled reminders for every household and delivers what is due. Safe to run often. */
 export async function runReminders(ctx: AppContext): Promise<ReminderRunResult> {
   const now = ctx.now();
+  // Today's adhan times from the mosque, fetched once a day (and retried if the feed is down).
+  await refreshMosqueTimes(ctx);
+  const prayerTimesFor = (date: string) => toPrayerTimes(prayerDay(ctx, date));
   let planned = 0;
   let queued = 0;
   for (const household of listHouseholds(ctx.db)) {
@@ -28,6 +33,7 @@ export async function runReminders(ctx: AppContext): Promise<ReminderRunResult> 
       users: reachable.map((user) => ({ id: user.id, name: user.name, prefs: user.prefs })),
       tasks: listHouseholdTasks(ctx.db, household.id),
       memberName: (id) => names.get(id),
+      prayerTimesFor,
     });
     planned += notifications.length;
     queued += ctx.notifier.enqueue(notifications);

@@ -120,3 +120,51 @@ export function prayerTimes(date: Ymd, lat: number, lng: number, method: PrayerM
     isha: at(times.isha),
   };
 }
+
+// ── Times from the mosque ─────────────────────────────────────────────────────────────────────
+
+/** Where a day's times come from: the mosque's own timetable (ICC Brossard), or the calculation. */
+export type PrayerSource = 'mosque' | 'calculated';
+
+/** A day's adhan times as the API sends them (ISO instants). */
+export interface PrayerDay {
+  date: Ymd;
+  source: PrayerSource;
+  fajr: string;
+  sunrise: string;
+  dhuhr: string;
+  asr: string;
+  maghrib: string;
+  isha: string;
+}
+
+const DAY_EVENTS = ['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
+
+export function toPrayerTimes(day: PrayerDay): PrayerTimes {
+  const out = { date: day.date } as PrayerTimes;
+  for (const key of DAY_EVENTS) out[key] = new Date(day[key]);
+  return out;
+}
+
+export function toPrayerDay(times: PrayerTimes, source: PrayerSource): PrayerDay {
+  const out = { date: times.date, source } as PrayerDay;
+  for (const key of DAY_EVENTS) out[key] = times[key].toISOString();
+  return out;
+}
+
+/**
+ * The calculation for `date`, nudged by how far the mosque's timetable sat from it on a recent day
+ * (`reference`). Used only when the mosque's own times for that day aren't available.
+ */
+export function adjustedTimes(date: Ymd, lat: number, lng: number, reference?: PrayerTimes | null): PrayerTimes {
+  const base = prayerTimes(date, lat, lng);
+  if (!reference) return base;
+  const calculated = prayerTimes(reference.date, lat, lng);
+  const out = { ...base };
+  for (const key of DAY_EVENTS) {
+    const shift = reference[key].getTime() - calculated[key].getTime();
+    // A shift beyond half an hour means the reference is something else (a manual time): ignore it.
+    if (Math.abs(shift) <= 30 * 60_000) out[key] = new Date(base[key].getTime() + shift);
+  }
+  return out;
+}

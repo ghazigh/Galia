@@ -41,10 +41,14 @@ the living room's porte-fenêtre opens straight onto the patio.
   Daylight, Settings) slides over the scene; the house stays centered in whatever space is left. Pages
   push over the home screen like a native navigation stack, and the scene pauses while it's covered.
 
-**Prayer times.** The Daylight panel lists today's five prayers (and sunrise), the next one highlighted
-with a countdown. Each member gets a push at Fajr, Dhuhr, Asr, Maghrib and Isha, on the minute and
-even during quiet hours, plus a reminder 15 minutes before Asr to pray Dhuhr in time — both can be
-turned off in Settings → Notifications.
+**Prayer times.** The adhan times come from ICC Brossard's own timetable (the JSON feed behind
+iccbrossard.com): the server reads it each day and stores it, and the app and notifications use it.
+Jumu'ah entries are ignored, so Fridays use Dhuhr. If the feed can't be reached, that day falls back to
+a calculation (ISNA, 15°, standard Asr, `src/shared/prayer.ts`) nudged by the mosque's latest offsets,
+and the Daylight panel says so. The panel lists today's five prayers (and sunrise), the next one
+highlighted with a countdown. Each member gets a push at Fajr, Dhuhr, Asr, Maghrib and Isha, on the
+minute and even during quiet hours, plus a reminder 15 minutes before Asr to pray Dhuhr in time —
+both can be turned off in Settings → Notifications.
 
 **A live sky.** The sky over the house is computed for your home, right now:
 
@@ -271,9 +275,8 @@ Playwright browsers don't match the pinned version, point it at any Chromium wit
   deploy region is Montréal (`northamerica-northeast1`); change `REGION` as needed.
 - **Where the sun is.** The sky assumes the front of the house faces away from the midday sun. Set
   the real direction in Settings → 3D house.
-- **Prayer times** use the ISNA method (Fajr and Isha at 15°) with the standard Asr, computed for
-  Saint-Philippe (`src/shared/prayer.ts`). If your mosque uses another convention (e.g. Hanafi Asr or
-  18° angles), change `ISNA` there.
+- **Prayer times** follow ICC Brossard (`MOSQUE_PRAYER_URL` to point elsewhere). The fallback
+  calculation uses ISNA with the standard Asr.
 
 ## Next (PRD §10)
 

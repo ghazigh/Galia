@@ -1,7 +1,8 @@
 import { moonPhaseName, sunPosition } from '@shared/astro';
 import { zonedNow } from '@shared/dates';
 import { DHUHR_REMINDER_MINUTES } from '@shared/reminders';
-import { PRAYER_NAMES, PRAYERS } from '@shared/prayer';
+import { PRAYER_NAMES, PRAYERS, type PrayerSource } from '@shared/prayer';
+import { usePrayers } from '../../lib/prayers';
 import { BellRing, MapPin, Play, Sunrise, Sunset } from 'lucide-react';
 import { useMemo } from 'react';
 import { Sheet } from '../../components/Sheet';
@@ -67,7 +68,8 @@ function SunChart({ midnight, lat, lng, now, sunrise, sunset }: { midnight: numb
 
 export function DaylightSheet({ open, onClose, onPreview }: { open: boolean; onClose: () => void; onPreview: () => void }) {
   const daylight = useDaylight();
-  const { at, live, timeZone, today, illumination, location: where, prayers, nextPrayer } = daylight;
+  const { at, live, timeZone, today, illumination, location: where } = daylight;
+  const prayers = usePrayers(daylight);
   const local = zonedNow(timeZone, at);
   const midnight = at.valueOf() - local.minutes * 60_000 - at.getUTCSeconds() * 1000;
 
@@ -91,7 +93,7 @@ export function DaylightSheet({ open, onClose, onPreview }: { open: boolean; onC
           </div>
         </div>
 
-        <PrayerCard prayers={prayers} next={nextPrayer} now={at} timeZone={timeZone} />
+        <PrayerCard prayers={prayers.times} next={prayers.next} source={prayers.source} now={at} timeZone={timeZone} />
 
         <div className="mt-5 rounded-2xl bg-sunken/60 p-4">
           <SunChart midnight={midnight} lat={where.lat} lng={where.lng} now={at.valueOf()} sunrise={today.sunrise} sunset={today.sunset} />
@@ -134,7 +136,7 @@ function countdown(ms: number): string {
 }
 
 /** Today's five prayers (and sunrise), the next one highlighted with a countdown. */
-function PrayerCard({ prayers, next, now, timeZone }: { prayers: Daylight['prayers']; next: Daylight['nextPrayer']; now: Date; timeZone: string }) {
+function PrayerCard({ prayers, next, source, now, timeZone }: { prayers: Daylight['prayers']; next: Daylight['nextPrayer']; source: PrayerSource; now: Date; timeZone: string }) {
   const reminder = new Date(prayers.asr.valueOf() - DHUHR_REMINDER_MINUTES * 60_000);
   const rows = [
     ...PRAYERS.map((prayer) => ({ id: prayer, label: PRAYER_NAMES[prayer], at: prayers[prayer], prayer: true })),
@@ -173,7 +175,11 @@ function PrayerCard({ prayers, next, now, timeZone }: { prayers: Daylight['praye
         <BellRing className="size-3.5" />
         Reminder to pray Dhuhr at {formatClock(reminder, timeZone)}, {DHUHR_REMINDER_MINUTES} min before Asr
       </p>
-      <p className="mt-1 px-1 text-[11.5px] text-ink-3">ISNA · Fajr and Isha at 15° · standard Asr · Saint-Philippe, QC</p>
+      <p className="mt-1 px-1 text-[11.5px] text-ink-3">
+        {source === 'mosque'
+          ? 'Adhan times from ICC Brossard'
+          : 'Calculated (ICC Brossard’s timetable couldn’t be reached) · may differ by a minute or two'}
+      </p>
     </section>
   );
 }
