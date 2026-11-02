@@ -109,7 +109,7 @@ test('the daylight panel follows the real sun and previews the day in 3D', async
   await expect(sheet.getByText('Sunset', { exact: true })).toBeVisible();
   await expect(sheet.getByText('Saint-Philippe, QC').first()).toBeVisible();
   const prayers = sheet.getByRole('region', { name: 'Prayer times' });
-  for (const name of ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']) await expect(prayers.getByText(name, { exact: true })).toBeVisible();
+  for (const name of ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha']) await expect(prayers.getByRole('listitem').getByText(name, { exact: true })).toBeVisible();
   await expect(prayers.getByText(/Reminder to pray Dhuhr at/)).toBeVisible();
   await sheet.getByRole('button', { name: 'Preview the day in 3D' }).click();
   const scrubber = page.getByRole('group', { name: 'Sky preview' });
