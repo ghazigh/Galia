@@ -68,7 +68,8 @@ export function HomePage({ active }: { active: boolean }) {
   const [manualView, setManualView] = useState<SceneView>(EXTERIOR);
   const [moved, setMoved] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  const [daylightOpen, setDaylightOpen] = useState(false);
+  // A prayer notification opens the app on the Daylight panel (/?daylight=1).
+  const [daylightOpen, setDaylightOpen] = useState(() => params.get('daylight') === '1');
   const [healthOpen, setHealthOpen] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
 

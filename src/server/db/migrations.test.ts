@@ -32,5 +32,7 @@ describe('migrations', () => {
     const zone = (id: string) => (db.prepare('SELECT zone_id FROM tasks WHERE id = ?').get(id) as { zone_id: string | null }).zone_id;
     expect(zone('t2')).toBe('laundry');
     expect(zone('t3')).toBe('mechanical');
+    // The house is in Montréal: the household's clock follows it, whatever was chosen at setup.
+    expect((db.prepare('SELECT time_zone FROM households').get() as { time_zone: string }).time_zone).toBe('America/Montreal');
   });
 });

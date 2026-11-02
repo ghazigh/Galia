@@ -1,12 +1,13 @@
 import { moonPhaseName, sunPosition } from '@shared/astro';
 import { zonedNow } from '@shared/dates';
-import { LocateFixed, MapPin, Play, Sunrise, Sunset } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { DHUHR_REMINDER_MINUTES } from '@shared/reminders';
+import { PRAYER_NAMES, PRAYERS, type PrayerSource } from '@shared/prayer';
+import { usePrayers } from '../../lib/prayers';
+import { BellRing, MapPin, Play, Sunrise, Sunset } from 'lucide-react';
+import { useMemo } from 'react';
 import { Sheet } from '../../components/Sheet';
-import { useToast } from '../../components/Toast';
 import { Button, cx } from '../../components/ui';
-import { formatClock, PHASE_LABEL, useDaylight } from '../../lib/daylight';
-import { setPrefs, usePrefs } from '../../lib/prefs';
+import { formatClock, PHASE_LABEL, useDaylight, type Daylight } from '../../lib/daylight';
 import { MoonIcon } from './MoonIcon';
 
 const DAY_MIN = 1440;
@@ -14,39 +15,6 @@ const DAY_MIN = 1440;
 function duration(ms: number): string {
   const minutes = Math.round(ms / 60_000);
   return `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')} min`;
-}
-
-/** Asks for this device's position once and keeps it for the sky. */
-export function useDeviceLocation() {
-  const toast = useToast();
-  const [busy, setBusy] = useState(false);
-  const request = () => {
-    if (!('geolocation' in navigator)) {
-      toast('Location isn’t available in this browser', { tone: 'error' });
-      return;
-    }
-    setBusy(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setBusy(false);
-        setPrefs({
-          location: {
-            mode: 'device',
-            lat: Math.round(position.coords.latitude * 100) / 100,
-            lng: Math.round(position.coords.longitude * 100) / 100,
-            updatedAt: new Date().toISOString(),
-          },
-        });
-        toast('The sky now follows this device’s location', { tone: 'success' });
-      },
-      () => {
-        setBusy(false);
-        toast('Couldn’t get your location — the sky keeps using your time zone', { tone: 'error' });
-      },
-      { enableHighAccuracy: false, timeout: 12_000, maximumAge: 3_600_000 },
-    );
-  };
-  return { request, busy };
 }
 
 function SunChart({ midnight, lat, lng, now, sunrise, sunset }: { midnight: number; lat: number; lng: number; now: number; sunrise: Date | null; sunset: Date | null }) {
@@ -100,9 +68,8 @@ function SunChart({ midnight, lat, lng, now, sunrise, sunset }: { midnight: numb
 
 export function DaylightSheet({ open, onClose, onPreview }: { open: boolean; onClose: () => void; onPreview: () => void }) {
   const daylight = useDaylight();
-  const prefs = usePrefs();
-  const location = useDeviceLocation();
   const { at, live, timeZone, today, illumination, location: where } = daylight;
+  const prayers = usePrayers(daylight);
   const local = zonedNow(timeZone, at);
   const midnight = at.valueOf() - local.minutes * 60_000 - at.getUTCSeconds() * 1000;
 
@@ -114,11 +81,10 @@ export function DaylightSheet({ open, onClose, onPreview }: { open: boolean; onC
       <div className="pb-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="eyebrow text-ink-3">{live ? 'Now' : 'Preview'} · {formatClock(at, timeZone)}</p>
+            <p className="eyebrow text-ink-3">{live ? 'Now' : `Preview · ${formatClock(at, timeZone)}`}</p>
             <p className="mt-1 font-display text-[28px] leading-tight font-semibold tracking-[-0.02em] text-ink">{phase}</p>
             <p className="mt-0.5 flex items-center gap-1 text-[13px] text-ink-3">
               <MapPin className="size-3.5" /> {where.label}
-              {where.source === 'time-zone' && <span>· from your time zone</span>}
             </p>
           </div>
           <div className="flex flex-col items-center gap-1 pb-1">
@@ -126,6 +92,8 @@ export function DaylightSheet({ open, onClose, onPreview }: { open: boolean; onC
             <span className="text-[11px] text-ink-3 tabular">{Math.round(illumination.fraction * 100)}%</span>
           </div>
         </div>
+
+        <PrayerCard prayers={prayers.times} next={prayers.next} source={prayers.source} now={at} timeZone={timeZone} />
 
         <div className="mt-5 rounded-2xl bg-sunken/60 p-4">
           <SunChart midnight={midnight} lat={where.lat} lng={where.lng} now={at.valueOf()} sunrise={today.sunrise} sunset={today.sunset} />
@@ -153,30 +121,65 @@ export function DaylightSheet({ open, onClose, onPreview }: { open: boolean; onC
           ))}
         </dl>
 
-        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-line px-4 py-3">
-          <LocateFixed className="size-5 shrink-0 text-ink-2" strokeWidth={1.7} />
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-ink">{prefs.location.mode === 'device' ? 'Using this device’s location' : 'Approximate location'}</p>
-            <p className="text-[12.5px] text-ink-3">
-              {prefs.location.mode === 'device'
-                ? `${where.lat.toFixed(2)}, ${where.lng.toFixed(2)} · stays on this device`
-                : `Sun and moon are placed for ${where.label}. Your exact position is never sent anywhere.`}
-            </p>
-          </div>
-          {prefs.location.mode === 'device' ? (
-            <Button size="sm" variant="ghost" onClick={() => setPrefs({ location: { mode: 'auto' } })}>
-              Use time zone
-            </Button>
-          ) : (
-            <Button size="sm" variant="soft" loading={location.busy} onClick={location.request}>
-              Use precise
-            </Button>
-          )}
-        </div>
         <p className={cx('mt-3 px-1 text-[12px] text-ink-3')}>
-          The 3D sky follows the real sun and moon for your home — light, shadows and the moon’s phase update through the day.
+          The 3D sky follows the real sun and moon over the house, in Montréal time — light, shadows and the moon’s phase update through the day.
         </p>
       </div>
     </Sheet>
+  );
+}
+
+function countdown(ms: number): string {
+  const minutes = Math.max(1, Math.ceil(ms / 60_000));
+  if (minutes < 60) return `in ${minutes} min`;
+  return `in ${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}`;
+}
+
+/** Today's five prayers (and sunrise), the next one highlighted with a countdown. */
+function PrayerCard({ prayers, next, source, now, timeZone }: { prayers: Daylight['prayers']; next: Daylight['nextPrayer']; source: PrayerSource; now: Date; timeZone: string }) {
+  const reminder = new Date(prayers.asr.valueOf() - DHUHR_REMINDER_MINUTES * 60_000);
+  const rows = [
+    ...PRAYERS.map((prayer) => ({ id: prayer, label: PRAYER_NAMES[prayer], at: prayers[prayer], prayer: true })),
+    { id: 'sunrise', label: 'Sunrise', at: prayers.sunrise, prayer: false },
+  ].sort((a, b) => a.at.valueOf() - b.at.valueOf());
+  const tomorrow = next.at.valueOf() > prayers.isha.valueOf();
+  return (
+    <section aria-label="Prayer times" className="mt-5 rounded-2xl bg-sunken/60 p-4">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-[15px] font-semibold text-ink">Prayer times</h3>
+        <p className="text-[12.5px] text-ink-3">
+          Next: <span className="font-medium text-accent-ink">{PRAYER_NAMES[next.prayer]}</span> {countdown(next.at.valueOf() - now.valueOf())}
+          {tomorrow && ' (tomorrow)'}
+        </p>
+      </div>
+      <ul className="mt-2">
+        {rows.map((row) => {
+          const isNext = row.prayer && row.id === next.prayer && !tomorrow;
+          const past = row.at.valueOf() <= now.valueOf();
+          return (
+            <li
+              key={row.id}
+              className={cx(
+                'flex items-center justify-between rounded-xl px-2.5 py-2 text-[15px]',
+                isNext && 'bg-accent/15 ring-1 ring-accent/30',
+                !row.prayer && 'text-[13px]',
+              )}
+            >
+              <span className={cx(row.prayer ? 'font-medium' : 'text-ink-3', past && !isNext ? 'text-ink-3' : 'text-ink')}>{row.label}</span>
+              <span className={cx('tabular', past && !isNext ? 'text-ink-3' : 'text-ink', !row.prayer && 'text-ink-3')}>{formatClock(row.at, timeZone)}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-2 flex items-center gap-1.5 px-1 text-[12px] text-ink-3">
+        <BellRing className="size-3.5" />
+        Reminder to pray Dhuhr at {formatClock(reminder, timeZone)}, {DHUHR_REMINDER_MINUTES} min before Asr
+      </p>
+      <p className="mt-1 px-1 text-[11.5px] text-ink-3">
+        {source === 'mosque'
+          ? 'Adhan times from ICC Brossard'
+          : 'Calculated (ICC Brossard’s timetable couldn’t be reached) · may differ by a minute or two'}
+      </p>
+    </section>
   );
 }

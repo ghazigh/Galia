@@ -1,9 +1,11 @@
-import { parseHm, zonedNow, type Ymd } from './dates';
+import { addDays, parseHm, zonedNow, type Ymd } from './dates';
+import { HOME } from './home';
+import { PRAYER_NAMES, PRAYERS, prayerTimes, type PrayerTimes } from './prayer';
 import { isActionable, rankTasks, scoreTask } from './priority';
 import { canView, isMine, taskTiming } from './status';
 import type { NotificationPrefs, Task } from './types';
 
-export type NotificationKind = 'digest' | 'safety' | 'quick-wins' | 'assignment' | 'poke' | 'test';
+export type NotificationKind = 'digest' | 'safety' | 'quick-wins' | 'assignment' | 'poke' | 'prayer' | 'test';
 
 export interface PlannedNotification {
   userId: string;
@@ -32,11 +34,19 @@ export interface PlanInput {
   users: PlannerUser[];
   tasks: Task[];
   memberName?: (id: string) => string | undefined;
+  /** A day's adhan times (the mosque's); defaults to the calculation. */
+  prayerTimesFor?: (date: Ymd) => PrayerTimes;
 }
+
+const calculatedTimes = (date: Ymd) => prayerTimes(date, HOME.lat, HOME.lng);
 
 /** A scheduled reminder still goes out if the cron run lands within this many minutes after its time. */
 const DIGEST_CATCH_UP_MINUTES = 120;
 const QUICK_WIN_CATCH_UP_MINUTES = 60;
+/** A prayer push still goes out if the run lands this many minutes late; after that it is stale. */
+export const PRAYER_CATCH_UP_MINUTES = 10;
+/** The Dhuhr reminder: this many minutes before Asr. */
+export const DHUHR_REMINDER_MINUTES = 15;
 /** Overdue safety items are re-announced every N days. */
 const SAFETY_REPEAT_DAYS = 3;
 
@@ -164,6 +174,54 @@ function planQuickWins(
   return notification;
 }
 
+function clockTime(at: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' }).format(at);
+}
+
+/**
+ * Prayer pushes due at `now`: each of the five prayers at its time, plus a reminder before Asr
+ * so Dhuhr isn't missed. They ignore quiet hours (Fajr is before most people's quiet hours end).
+ */
+export function planPrayers(user: PlannerUser, now: Date, timeZone: string, timesFor: (date: Ymd) => PrayerTimes = calculatedTimes): PlannedNotification[] {
+  const { prayers } = user.prefs;
+  if (!prayers?.enabled) return [];
+  const today = zonedNow(timeZone, now).date;
+  const out: PlannedNotification[] = [];
+  const due = (at: Date) => now.getTime() >= at.getTime() && now.getTime() < at.getTime() + PRAYER_CATCH_UP_MINUTES * 60_000;
+  // Yesterday too, in case a late prayer (Isha in midsummer) crosses midnight.
+  for (const date of [addDays(today, -1), today]) {
+    const times = timesFor(date);
+    for (const prayer of PRAYERS) {
+      const at = times[prayer];
+      if (!due(at)) continue;
+      out.push({
+        userId: user.id,
+        key: `prayer:${date}:${prayer}`,
+        kind: 'prayer',
+        title: `🕌 ${PRAYER_NAMES[prayer]}`,
+        body: `It's time for ${PRAYER_NAMES[prayer]} · ${clockTime(at, timeZone)}`,
+        url: '/?daylight=1',
+        tag: 'prayer',
+        deliverAfter: at.toISOString(),
+      });
+    }
+    const reminder = new Date(times.asr.getTime() - DHUHR_REMINDER_MINUTES * 60_000);
+    if (prayers.dhuhrReminder && due(reminder) && now.getTime() < times.asr.getTime()) {
+      out.push({
+        userId: user.id,
+        key: `prayer:${date}:dhuhr-reminder`,
+        kind: 'prayer',
+        title: `⏳ Dhuhr ends in ${DHUHR_REMINDER_MINUTES} min`,
+        body: `Asr comes in at ${clockTime(times.asr, timeZone)} — pray Dhuhr now if you haven't.`,
+        url: '/?daylight=1',
+        tag: 'prayer',
+        deliverAfter: reminder.toISOString(),
+      });
+    }
+  }
+  return out;
+}
+
 /**
  * Pure reminder planner: given the household state at `now`, returns every scheduled
  * notification that should exist. Callers dedupe on `key`, so running it every few minutes
@@ -202,6 +260,8 @@ export function planReminders(input: PlanInput): PlannedNotification[] {
         if (quick) planned.push(quick);
       }
     }
+
+    planned.push(...planPrayers(user, now, timeZone, input.prayerTimesFor));
   }
   return planned;
 }

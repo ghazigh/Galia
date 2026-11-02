@@ -7,7 +7,7 @@ services:
       - '8080:8080'
     env_file: .env
     environment:
-      REMINDER_INTERVAL_MINUTES: '5'
+      REMINDER_INTERVAL_MINUTES: '1'
     volumes:
       - household-data:/data
     restart: unless-stopped

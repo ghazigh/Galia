@@ -16,7 +16,7 @@ SERVICE="${SERVICE:-household-os}"
 BUCKET="${BUCKET:-${PROJECT_ID}-${SERVICE}}"
 RUN_SA="${SERVICE}-run@${PROJECT_ID}.iam.gserviceaccount.com"
 VAPID_SUBJECT="${VAPID_SUBJECT:-mailto:admin@example.com}"
-SCHEDULE="${SCHEDULE:-*/15 * * * *}"
+SCHEDULE="${SCHEDULE:-* * * * *}" # every minute: prayer notifications go out on the minute
 
 cd "$(dirname "$0")/../.."
 gcloud config set project "$PROJECT_ID" >/dev/null

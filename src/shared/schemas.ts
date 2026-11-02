@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isHm, isValidTimeZone, isYmd } from './dates';
+import { isHm, isYmd } from './dates';
 import type { SeedGroup } from './seed';
 import { PRIORITIES, RISKS, type FixtureId, type ZoneId } from './types';
 import { FIXTURES, ZONE_IDS } from './zones';
@@ -78,7 +78,8 @@ export const SEED_GROUP_IDS: readonly SeedGroup[] = ['essential', 'recommended',
 
 export const setupSchema = z.object({
   householdName: z.string().trim().min(1).max(80),
-  timeZone: z.string().refine(isValidTimeZone, 'Unknown time zone'),
+  /** Ignored: the house is in Montréal (see shared/home.ts). Kept so older clients can still sign up. */
+  timeZone: z.string().optional(),
   name: personName,
   email,
   password,
@@ -108,6 +109,8 @@ export const notificationPrefsSchema = z.object({
   }),
   assignments: z.object({ enabled: z.boolean() }),
   quietHours: z.object({ enabled: z.boolean(), start: hm, end: hm }),
+  // Optional so an app version from before prayer times can still save its settings.
+  prayers: z.object({ enabled: z.boolean(), dhuhrReminder: z.boolean() }).optional(),
 });
 
 export const profilePatchSchema = z.object({
@@ -117,7 +120,6 @@ export const profilePatchSchema = z.object({
 
 export const householdPatchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
-  timeZone: z.string().refine(isValidTimeZone, 'Unknown time zone').optional(),
   zoneNames: z.partialRecord(zoneIdSchema, z.string().trim().max(40)).optional(),
 });
 

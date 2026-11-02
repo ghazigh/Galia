@@ -1,3 +1,4 @@
+import { HOME } from '@shared/home';
 import { acceptInviteSchema, loginSchema, setupSchema } from '@shared/schemas';
 import { SEED_TASKS } from '@shared/seed';
 import { DEFAULT_NOTIFICATION_PREFS, type Household } from '@shared/types';
@@ -46,7 +47,7 @@ export function authRoutes(ctx: AppContext, limit: Limit) {
     const household: Household = {
       id: newId(),
       name: input.householdName,
-      timeZone: input.timeZone,
+      timeZone: HOME.timeZone,
       zoneNames: {},
       createdAt: now,
     };

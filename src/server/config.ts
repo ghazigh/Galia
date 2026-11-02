@@ -14,6 +14,8 @@ export interface Config {
   cronSecret: string | null;
   /** Run the reminder loop in-process every N minutes (0 = rely on an external scheduler). */
   reminderIntervalMinutes: number;
+  /** ICC Brossard's prayer-time API (today's adhan times); empty to only calculate. */
+  mosquePrayerUrl: string | null;
   vapid: { publicKey: string; privateKey: string; subject: string } | null;
   gcs: { bucket: string; object: string } | null;
   ai: {
@@ -69,6 +71,8 @@ export function loadConfig(): Config {
     maxMembers: int('MAX_MEMBERS', 3),
     cronSecret: str('CRON_SECRET'),
     reminderIntervalMinutes: int('REMINDER_INTERVAL_MINUTES', env === 'development' ? 5 : 0),
+    // 'off' keeps the server offline (tests); unset uses ICC Brossard's feed.
+    mosquePrayerUrl: str('MOSQUE_PRAYER_URL') === 'off' ? null : (str('MOSQUE_PRAYER_URL') ?? 'https://iccbrossardmosque.azurewebsites.net/api/PrayerTime/get?id=1'),
     vapid:
       vapidPublic && vapidPrivate
         ? {

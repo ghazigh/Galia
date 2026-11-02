@@ -1,0 +1,83 @@
+{
+ "ArabicHijriDate": "٢١ جُمادى الأولى ١٤٤٨",
+ "EnglishHijriDate": "21 Jumada-al-Awwal 1448",
+ "FrenchHijriDate": "21 Joumada l-‘oula 1448",
+ "GeorgianDate": "Sunday , Nov 01, 2026",
+ "PrayerDate": "2026-11-01T00:00:00",
+ "isManualHijriDate": false,
+ "HijriCorrectionOffset": 0,
+ "prayers": [
+  {
+   "PrayerName": "Fajr",
+   "Time": "5:10 AM",
+   "PrayerDateTime": "2026-11-01T05:10:00",
+   "IqamaTime": "5:30 AM",
+   "IqamaPrayerDateTime": "2026-11-01T05:30:00",
+   "isManual": false,
+   "IqamaManualOffset": 20
+  },
+  {
+   "PrayerName": "Sunrise ",
+   "Time": "6:33 AM",
+   "PrayerDateTime": "2026-11-01T06:33:00",
+   "IqamaTime": "6:33 AM",
+   "IqamaPrayerDateTime": "2026-11-01T06:33:00",
+   "isManual": false,
+   "IqamaManualOffset": -2
+  },
+  {
+   "PrayerName": "Dhuhr",
+   "Time": "11:37 AM",
+   "PrayerDateTime": "2026-11-01T11:37:00",
+   "IqamaTime": "12:30 PM",
+   "IqamaPrayerDateTime": "2026-11-01T12:30:00Z",
+   "isManual": true,
+   "IqamaManualOffset": 0
+  },
+  {
+   "PrayerName": "Asr",
+   "Time": "2:17 PM",
+   "PrayerDateTime": "2026-11-01T14:17:00",
+   "IqamaTime": "2:32 PM",
+   "IqamaPrayerDateTime": "2026-11-01T14:32:00",
+   "isManual": false,
+   "IqamaManualOffset": 15
+  },
+  {
+   "PrayerName": "Maghrib",
+   "Time": "4:43 PM",
+   "PrayerDateTime": "2026-11-01T16:43:00",
+   "IqamaTime": "4:53 PM",
+   "IqamaPrayerDateTime": "2026-11-01T16:53:00",
+   "isManual": false,
+   "IqamaManualOffset": 10
+  },
+  {
+   "PrayerName": "Isha",
+   "Time": "6:04 PM",
+   "PrayerDateTime": "2026-11-01T18:04:00",
+   "IqamaTime": "7:30 PM",
+   "IqamaPrayerDateTime": "2026-10-21T19:30:00Z",
+   "isManual": true,
+   "IqamaManualOffset": 0
+  },
+  {
+   "PrayerName": "Jumma1",
+   "Time": "11:45 AM",
+   "PrayerDateTime": "2024-12-05T11:45:00.242Z",
+   "IqamaTime": "11:45 AM",
+   "IqamaPrayerDateTime": "2024-12-05T11:45:00.242Z",
+   "isManual": false,
+   "IqamaManualOffset": 0
+  },
+  {
+   "PrayerName": "Jumma2",
+   "Time": "01:00 PM",
+   "PrayerDateTime": "2024-12-05T13:00:00.242Z",
+   "IqamaTime": "01:00 PM",
+   "IqamaPrayerDateTime": "2024-12-05T13:00:00.242Z",
+   "isManual": false,
+   "IqamaManualOffset": 0
+  }
+ ]
+}

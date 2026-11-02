@@ -24,11 +24,12 @@ import { Link } from 'react-router';
 import { useAppData, useUi } from '../../app/context';
 import { NavRow, QuickAction } from '../../components/nav';
 import { Button, cx, EmptyState, IconButton } from '../../components/ui';
-import { formatClock, PHASE_LABEL, type Daylight } from '../../lib/daylight';
+import { formatClock, type Daylight } from '../../lib/daylight';
+import { PRAYER_NAMES } from '@shared/prayer';
+import { usePrayers } from '../../lib/prayers';
 import { levelZones } from '../../scene/layout';
 import { useOpenTask } from '../tasks/actions';
 import { TaskRow } from '../tasks/TaskRow';
-import { moonPhaseName } from '@shared/astro';
 
 export const HEALTH_RANK: Record<ZoneHealth, number> = { overdue: 4, today: 3, soon: 2, ok: 1, empty: 0 };
 export const HEALTH_DOT: Record<ZoneHealth, string> = {
@@ -115,8 +116,7 @@ export function OverviewPanel({
   const todos = open.filter((t) => t.kind === 'todo');
   const fromPartner = partner ? todos.filter((t) => t.assigneeId === me.id && t.assignedById === partner.id).length : 0;
   const urgent = attention.filter((r) => r.timing.state === 'overdue' || r.timing.state === 'today').length;
-  const next = daylight.next;
-  const phase = PHASE_LABEL[daylight.phase][daylight.morning ? 'morning' : 'evening'];
+  const { next: nextPrayer } = usePrayers(daylight);
 
   return (
     <div className="px-2 pb-4">
@@ -183,8 +183,8 @@ export function OverviewPanel({
         <NavRow icon={Activity} title="House health" subtitle={`${health.score} · ${health.label}`} onClick={onHealth} />
         <NavRow
           icon={daylight.isNight ? Moon : SunMedium}
-          title="Daylight"
-          subtitle={`${phase}${next ? ` · ${next.kind === 'sunset' ? 'Sunset' : 'Sunrise'} ${formatClock(next.at, daylight.timeZone)}` : ''} · ${moonPhaseName(daylight.illumination.phase)}`}
+          title="Daylight & prayer times"
+          subtitle={`Next: ${PRAYER_NAMES[nextPrayer.prayer]} at ${formatClock(nextPrayer.at, daylight.timeZone)}`}
           onClick={onDaylight}
         />
         <NavRow icon={Settings} title="Settings" subtitle="Reminders, household, appearance" to="/settings" />

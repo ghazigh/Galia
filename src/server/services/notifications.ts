@@ -124,7 +124,7 @@ export class Notifier {
         result.skipped += 1;
         continue;
       }
-      const urgent = item.kind === 'safety' || item.kind === 'assignment' || item.kind === 'poke';
+      const urgent = item.kind === 'safety' || item.kind === 'assignment' || item.kind === 'poke' || item.kind === 'prayer';
       let delivered = false;
       const errors: string[] = [];
       for (const subscription of subscriptions) {
