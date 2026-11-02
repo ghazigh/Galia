@@ -61,7 +61,6 @@ function notifyAssignment(ctx: AppContext, actor: Actor, task: Task): void {
     assignee: { id: assignee.id, name: assignee.name, prefs: assignee.prefs },
     assignerName: actor.user.name,
     now: ctx.now(),
-    timeZone: actor.household.timeZone,
   });
   if (!planned) return;
   // The route flushes the outbox before it responds.
@@ -74,7 +73,7 @@ export function pokeAboutTask(
   actor: Actor,
   id: string,
   userId: string,
-): { notificationsOn: boolean; heldUntil: string | null } {
+): { notificationsOn: boolean } {
   const task = requireTask(ctx, actor, id);
   const target = actor.members.find((member) => member.id === userId);
   if (!target) throw new HttpError(422, 'That person is not part of this household');
@@ -86,7 +85,6 @@ export function pokeAboutTask(
     target: { id: target.id, name: target.name, prefs: target.prefs },
     pokerName: actor.user.name,
     now: ctx.now(),
-    timeZone: actor.household.timeZone,
   });
   if (ctx.notifier.enqueue([planned]) === 0) {
     throw new HttpError(
@@ -95,12 +93,7 @@ export function pokeAboutTask(
       'poke_cooldown',
     );
   }
-  const deliverAt = new Date(planned.deliverAfter);
-  return {
-    notificationsOn: ctx.notifier.enabled && listSubscriptions(ctx.db, target.id).length > 0,
-    // Set when the poke waits for the end of the other person's quiet hours.
-    heldUntil: deliverAt > ctx.now() ? planned.deliverAfter : null,
-  };
+  return { notificationsOn: ctx.notifier.enabled && listSubscriptions(ctx.db, target.id).length > 0 };
 }
 
 export function createTask(ctx: AppContext, actor: Actor, input: TaskCreateInput): Task {

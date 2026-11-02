@@ -47,7 +47,7 @@ Jumu'ah entries are ignored, so Fridays use Dhuhr. If the feed can't be reached,
 a calculation (ISNA, 15°, standard Asr, `src/shared/prayer.ts`) nudged by the mosque's latest offsets,
 and the Daylight panel says so. The panel lists today's five prayers (and sunrise), the next one
 highlighted with a countdown. Each member gets a push at Fajr, Dhuhr, Asr, Maghrib and Isha, on the
-minute and even during quiet hours, plus a reminder 15 minutes before Asr to pray Dhuhr in time —
+minute, plus a reminder 15 minutes before Asr to pray Dhuhr in time —
 both can be turned off in Settings → Notifications.
 
 **A live sky.** The sky over the house is computed for your home, right now:
@@ -97,7 +97,8 @@ GFCI, bath fan, caulking, washer hoses, radon…) and a 4-item new-home checklis
 | Morning digest | 07:45 | Overdue, due today and coming up; skipped when nothing is due |
 | Safety alerts | 18:30 | Overdue fire-safety/critical items on day 1, 4, 7… |
 | Quick-win nudges | Weekdays 12:15, Sat 10:00 | Your "free moments" — editable, add your own |
-| Assignments | Immediately | Held until quiet hours end (22:00–07:00 by default) |
+| Assignments and pokes | Immediately | Day or night |
+| Prayer times | Each adhan, on the minute | Times from ICC Brossard; plus a Dhuhr reminder 15 min before Asr |
 
 ### Answers to the PRD's open questions
 

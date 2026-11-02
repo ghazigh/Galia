@@ -210,6 +210,6 @@ export function useAskTask() {
 export function usePoke() {
   return useMutation({
     mutationFn: ({ id, userId }: { id: string; userId: string }) =>
-      api<{ notificationsOn: boolean; heldUntil: string | null }>(`/tasks/${id}/poke`, { body: { userId } }),
+      api<{ notificationsOn: boolean }>(`/tasks/${id}/poke`, { body: { userId } }),
   });
 }

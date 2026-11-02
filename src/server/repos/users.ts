@@ -39,7 +39,6 @@ function mergePrefs(stored: Partial<NotificationPrefs>): NotificationPrefs {
     safetyAlerts: { ...d.safetyAlerts, ...stored.safetyAlerts },
     quickWins: { ...d.quickWins, ...stored.quickWins },
     assignments: { ...d.assignments, ...stored.assignments },
-    quietHours: { ...d.quietHours, ...stored.quietHours },
     prayers: { ...d.prayers, ...stored.prayers },
   };
 }

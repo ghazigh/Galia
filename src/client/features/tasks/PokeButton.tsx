@@ -10,7 +10,7 @@ import { usePoke } from '../../lib/queries';
 
 /** Sends another household member a push asking them to have a look at the task. */
 export function PokeButton({ task }: { task: Task }) {
-  const { me, members, memberById, bootstrap } = useAppData();
+  const { me, members, memberById } = useAppData();
   const poke = usePoke();
   const toast = useToast();
   const assignee = memberById(task.assigneeId);
@@ -24,16 +24,9 @@ export function PokeButton({ task }: { task: Task }) {
     poke.mutate(
       { id: task.id, userId: target.id },
       {
-        onSuccess: ({ notificationsOn, heldUntil }) => {
+        onSuccess: ({ notificationsOn }) => {
           if (!notificationsOn) {
             toast(`Poked ${target.name}, but they haven't turned on notifications yet`);
-          } else if (heldUntil) {
-            const time = new Date(heldUntil).toLocaleTimeString([], {
-              hour: 'numeric',
-              minute: '2-digit',
-              timeZone: bootstrap.household.timeZone,
-            });
-            toast(`Poked ${target.name}. It's their quiet hours, so it arrives at ${time}`);
           } else {
             toast(`Poked ${target.name} 👉`, { tone: 'success' });
           }
