@@ -1,5 +1,5 @@
 {
   "permissions": {
-    "allow": ["Bash(env -u CLOUDSDK_AUTH_ACCESS_TOKEN gcloud run deploy household-os:*)"]
+    "allow": ["Bash(env -u CLOUDSDK_AUTH_ACCESS_TOKEN gcloud run deploy household-os:*)","Bash(env -u CLOUDSDK_AUTH_ACCESS_TOKEN gcloud scheduler jobs update http household-os-reminders:*)"]
   }
 }
