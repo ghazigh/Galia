@@ -60,7 +60,9 @@ describe('maintenance suggestions', () => {
       estimateMinutes: 10,
       guide: { why: 'Keeps the resin regenerating.', steps: ['Check the brine tank', 'Add salt pellets'], pro: false },
     });
-    expect(requests[0].system).toContain('bedroom3: Office');
+    // Room names are fixed: a stored rename is ignored.
+    expect(requests[0].system).toContain('bedroom3: Bedroom 3');
+    expect(requests[0].system).toContain('bedroom2: Office');
     expect(requests[0].user).toContain('- Flush the hot water tank');
     expect(requests[0].effort).toBe('medium');
   });

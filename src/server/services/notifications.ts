@@ -50,11 +50,13 @@ export function createWebPushSender(vapid: {
         return { ok: true };
       } catch (err) {
         const status = err instanceof webpush.WebPushError ? err.statusCode : 0;
+        // The push service's own explanation (Apple answers e.g. {"reason":"BadJwtToken"}).
+        const body = err instanceof webpush.WebPushError ? String(err.body ?? '').slice(0, 200) : '';
         return {
           ok: false,
           // 404/410: the browser dropped this subscription; stop using it.
           gone: status === 404 || status === 410,
-          error: err instanceof Error ? `${status || ''} ${err.message}`.trim() : String(err),
+          error: err instanceof Error ? `${status || ''} ${err.message} ${body}`.trim() : String(err),
         };
       }
     },
@@ -121,6 +123,7 @@ export class Notifier {
       const subscriptions = listSubscriptions(this.db, item.userId);
       if (subscriptions.length === 0) {
         markOutbox(this.db, item.id, { sent: true, error: 'no subscriptions' });
+        console.warn(`[push] ${item.kind}: recipient has no device with notifications on`);
         result.skipped += 1;
         continue;
       }
@@ -129,6 +132,15 @@ export class Notifier {
       const errors: string[] = [];
       for (const subscription of subscriptions) {
         const outcome = await this.sender.send(subscription, item.payload, urgent);
+        // One line per attempt, so delivery problems show in the logs (no personal data).
+        const service = (() => {
+          try {
+            return new URL(subscription.endpoint).host;
+          } catch {
+            return 'unknown';
+          }
+        })();
+        console.log(`[push] ${item.kind} → ${service}: ${outcome.ok ? 'accepted' : outcome.gone ? 'gone (subscription removed)' : `failed: ${outcome.error}`}`);
         if (outcome.ok) {
           delivered = true;
           recordPushResult(this.db, subscription.id, true);

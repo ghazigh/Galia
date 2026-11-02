@@ -119,7 +119,6 @@ export const profilePatchSchema = z.object({
 
 export const householdPatchSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
-  zoneNames: z.partialRecord(zoneIdSchema, z.string().trim().max(40)).optional(),
 });
 
 export const pushSubscriptionSchema = z.object({

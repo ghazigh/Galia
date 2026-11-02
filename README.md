@@ -108,8 +108,7 @@ GFCI, bath fan, caulking, washer hoses, radon…) and a 4-item new-home checklis
 2. **"I have 10 minutes" filter.** Yes — Focus has 5/15/30/60-minute filters using each task's
    estimate (quick wins without one count as 10 minutes).
 3. **House detail in v1.** A furnished 3D model with ~20 linked fixtures, per-room status, storey
-   cutaways and room zoom (with the illustrated isometric house as fallback). Rooms can be renamed
-   (e.g. "Bedroom 3" → "Office").
+   cutaways and room zoom (with the illustrated isometric house as fallback). Room names are fixed.
 
 ## Run it locally
 
@@ -272,7 +271,7 @@ Playwright browsers don't match the pinned version, point it at any Chromium wit
   the exterior (cladding, windows, entry bay, roof, porch, grades) follows photos of the front and the
   garage end, with sizes estimated from them. The two photos disagree on handedness (the garage-end
   photo shows the entry on the other side), so the model follows the front photo; the long side
-  without windows is drawn as a plain brick wall. Rooms can be renamed in Settings. The default
+  without windows is drawn as a plain brick wall. Room names are fixed. The default
   deploy region is Montréal (`northamerica-northeast1`); change `REGION` as needed.
 - **Where the sun is.** The sky assumes the front of the house faces away from the midday sun. Set
   the real direction in Settings → 3D house.

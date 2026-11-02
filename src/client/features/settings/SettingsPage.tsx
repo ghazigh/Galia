@@ -1,7 +1,6 @@
 import { WEEKDAY_SHORT } from '@shared/dates';
 import { APP_NAME } from '@shared/brand';
-import type { Bootstrap, NotificationPrefs, QuickWinWindow, ZoneId } from '@shared/types';
-import { ZONES } from '@shared/zones';
+import type { Bootstrap, NotificationPrefs, QuickWinWindow } from '@shared/types';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BellRing,
@@ -382,33 +381,6 @@ function Household() {
   );
 }
 
-function Rooms() {
-  const { bootstrap } = useAppData();
-  const qc = useQueryClient();
-  const [names, setNames] = useState(bootstrap.household.zoneNames);
-  const save = async (zone: ZoneId, value: string) => {
-    const next = { ...names, [zone]: value.trim() };
-    if (!value.trim()) delete next[zone];
-    setNames(next);
-    setBootstrap(qc, await api<Bootstrap>('/household', { method: 'PATCH', body: { zoneNames: next } }));
-  };
-  return (
-    <>
-      {ZONES.filter((zone) => zone.id !== 'house').map((zone) => (
-        <Row key={zone.id} title={zone.name} detail={zone.blurb}>
-          <input
-            defaultValue={names[zone.id] ?? ''}
-            placeholder="Rename…"
-            onBlur={(e) => (e.target.value.trim() !== (names[zone.id] ?? '') ? void save(zone.id, e.target.value) : undefined)}
-            className="h-9 w-32 rounded-xl border border-transparent bg-sunken px-2.5 text-right text-[13px] text-ink outline-none placeholder:text-ink-3 focus:border-accent"
-            aria-label={`Rename ${zone.name}`}
-          />
-        </Row>
-      ))}
-    </>
-  );
-}
-
 function Install() {
   if (isStandalone()) {
     return <Row icon={<Check className="size-[18px]" />} title="Installed" detail="You're using the home-screen app." />;
@@ -558,10 +530,6 @@ export function SettingsPage() {
 
       <Section title="Household" id="household">
         <Household />
-      </Section>
-
-      <Section title="Rooms" description="Rename rooms to match how you use them (e.g. Bedroom 3 → Office).">
-        <Rooms />
       </Section>
 
       <Section title="Maintenance plan">
